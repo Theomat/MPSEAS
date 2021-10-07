@@ -13,7 +13,7 @@ Théo Matricon, [Marie Anastacio](https://www.universiteitleiden.nl/en/staffmemb
 [Statistical Comparison of Algorithm Performance Through Instance Selection](link):
 ![Figure](https://github.com/Theomat/PSEAS/raw/master/figure.png)
 
-(TODO: update te following :)
+(TODO: update the following :)
 ## Usage
 
 ### Installation
