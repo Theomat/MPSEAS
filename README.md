@@ -1,20 +1,19 @@
-# PSEAS
+# MPSEAS
 
-This is the repository for the code of the paper **"Statistical Comparison of Algorithm Performance Through Instance Selection"** published at CP 2021.
-[Link to paper](TODO)
+MPSEAS holds for Model-based Per Set Efficient Algorithm Selection and is a follow-up on the work that can be found in our [PSEAS repository](git@github.com:https://github.com/Theomat/PSEAS)
 
 **Authors**:
-Théo Matricon, [Marie Anastacio](https://www.universiteitleiden.nl/en/staffmembers/marie-anastacio#tab-1), [Nathanaël Fijalkow](https://nathanael-fijalkow.github.io/), [Laurent Simon](https://www.labri.fr/perso/lsimon/), [Holger Hoos](https://www.universiteitleiden.nl/en/staffmembers/holger-hoos#tab-1)
+Théo Matricon, [Marie Anastacio](https://www.universiteitleiden.nl/en/staffmembers/marie-anastacio#tab-1), [Holger Hoos](https://www.universiteitleiden.nl/en/staffmembers/holger-hoos#tab-1)
+
+**Acknowledgement**:
+[Nathanaël Fijalkow](https://nathanael-fijalkow.github.io/), [Laurent Simon](https://www.labri.fr/perso/lsimon/)
 
 ## For details see our [CP 2021](https://cp2021.a4cp.org/#) paper:
 
 [Statistical Comparison of Algorithm Performance Through Instance Selection](link):
 ![Figure](https://github.com/Theomat/PSEAS/raw/master/figure.png)
 
-### Abstract
-
- _Empirical performance evaluations, in competitions and scientific publications, play a major role in improving the state of the art in solving many automated reasoning problems, including SAT, CSP and Bayesian network structure learning (BNSL). To empirically demonstrate the merit of a new solver usually requires extensive experiments, with computational costs of CPU years. This not only makes it difficult for researchers with limited access to computational resources to test their ideas and publish their work, but also consumes large amounts of energy. We propose an approach for comparing the performance of two algorithms: by running the algorithm on carefully chosen instances we formulate a probabilistic statement on which algorithm performs best, trading off between the computational cost of running algorithms and the confidence in the result. We describe a set of methods for this purpose and evaluate their efficacy on diverse datasets from SAT, CSP and BNSL. On all these datasets, most of these approaches were able to choose the correct algorithm with about 95% accuracy, while using less than a third of the CPU time required for a full comparison; and the best methods reach such accuracy using less than 15% of the total CPU time._
-
+(TODO: update te following :)
 ## Usage
 
 ### Installation
