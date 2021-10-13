@@ -30,7 +30,7 @@ def __compute_distance_matrix__(features: np.ndarray, distance: Callable[[np.nda
 
 class UDD(InstanceSelection):
     """
-    Uncertainty + alpha * Density + beta *  Diversity
+    Uncertainty + alpha * Density - beta *  Diversity
 
     Uncertainty, Density, Diversity in [0;1] 
 
@@ -121,9 +121,12 @@ class UDD(InstanceSelection):
         densities /= np.max(densities)
         diversities /= np.max(diversities)
 
-        scores = uncertainties + self.alpha * densities + self.beta * diversities
-
-        self._next = np.argmax(scores)
+        # Not convinced by these two steps
+        scores = uncertainties + self.alpha * densities - self.beta * diversities
+        for i in range(self.n_instances):
+            if state[0][i] is not None:
+                scores[i] = 1e30
+        self._next = np.argmin(scores)
 
 
     def choose_instance(self) -> int:
