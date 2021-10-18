@@ -37,7 +37,9 @@ class UDD(InstanceSelection):
     samples: int - number of configuration samples to take for uncertainty step
     k: int - number of neighbours for density step
 
-    TODO: missing self.distance
+    TODO: 
+    - missing self.distance
+    - new uncertainty measure
     """
 
     def __init__(self, samples : int = 100, alpha: float = 1, beta: float = 1, k : int = 5) -> None:
@@ -45,7 +47,7 @@ class UDD(InstanceSelection):
         self.samples: int = samples
         self.alpha: float = alpha
         self.beta: float = beta
-        self.k : int = 5
+        self.k : int = k
 
     def ready(self, model, configuration_distribution, features, **kwargs) -> None:
         self.model = model
