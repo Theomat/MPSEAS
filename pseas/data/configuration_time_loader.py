@@ -39,4 +39,5 @@ def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], 
 
 if __name__ == "__main__":
     d = load_configuration_data("./rundata/kissat_ibm")
-    print(d.shape)
+    assert d[2].shape == (684, 100)
+    print("All good!")
