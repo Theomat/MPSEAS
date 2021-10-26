@@ -12,9 +12,8 @@ class Model():
         Return result and incertitude
         """
         # TODO
-        self.forest.predict(configuration, instance)
-        pass
-
+        feature_vector = configuration + instance
+        return self.forest.predict_mean_var(feature_vector)
 
     def fit(self, data):
         self.forest.fit(data, self.rng)
