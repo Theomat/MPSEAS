@@ -7,7 +7,7 @@ import numpy as np
 def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], np.ndarray]:
     """
     
-    Return: (instance_name2int, configuration2int, data)
+    Return: (instance_name2int, configuration2int, data, features)
     """
     instance_name2int: Dict[str, int] = {}
     configuration2int: Dict[str, int] = {}
@@ -33,7 +33,15 @@ def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], 
         for row in reader:
             data[int(row[1]), int(row[0])] = float(row[2])
 
-    return instance_name2int, configuration2int, data
+    features: Dict[int, list]={}
+    with open(os.path.join(path, "features.txt")) as fd:
+        reader = csv.reader(fd)
+        # Skip first line
+        next(reader)
+        for row in reader:
+            features[instance_name2int[row[0]]] = [float(val) for val in row[1:]]
+    
+    return instance_name2int, configuration2int, data, features
 
 
 

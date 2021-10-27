@@ -3,6 +3,7 @@ from pseas.data.aslib_scenario import ASlibScenario
 import pseas.data.data_transformer as data_transformer
 import pseas.data.feature_extractor as feature_extractor
 import pseas.data.result_extractor as result_extractor
+import pseas.data.configuration_time_loader as configuration_extractor
 
 from enum import Enum
 from typing import Generator, List, Tuple, Optional, Dict, Union
@@ -25,20 +26,35 @@ class TestEnv:
     -----------
     - seed (Optional[int]) - the seed to use. Default: None.
     """
-    def __init__(self, scenario_path: str, distribution: str = "cauchy", par_penalty: float = 1, verbose: bool = True, seed: Optional[int] = None) -> None:
+    def __init__(self, scenario_path: str, distribution: str = "cauchy", par_penalty: float = 1, verbose: bool = True, seed: Optional[int] = None, data_type: Optional[str] = "aslib") -> None:
         self._generator = np.random.default_rng(seed)
         self.par_penalty: float = par_penalty
 
-        scenario = ASlibScenario()
-        scenario.read_scenario(scenario_path)
-        scenario.check_data(1)
+        if data_type=="aslib":
+            
+            scenario = ASlibScenario()
+            scenario.read_scenario(scenario_path)
+            scenario.check_data(1)
 
-        features = feature_extractor.from_scenario(scenario)
-        results = result_extractor.from_scenario(scenario)
+            features = feature_extractor.from_scenario(scenario)
+            results = result_extractor.from_scenario(scenario)
 
-        features, results, cutoff_time = data_transformer.prepare_dataset(
-            features, results)   
-        cutoff_time = scenario.algorithm_cutoff_time
+            features, results, cutoff_time = data_transformer.prepare_dataset(
+                features, results)   
+            cutoff_time = scenario.algorithm_cutoff_time
+
+        elif data_type=="config":
+            
+            _,_,data,features = configuration_extractor.load_configuration_data(scenario_path)
+            results:Dict[str,Dict[str,float]]={}
+            for inst in range(np.shape(data)[0]):
+                results[str(inst)]={}
+                for conf in range(len(data[inst])):
+                    results[str(inst)][str(conf)]=data[inst][conf]
+            cutoff_time=np.amax(data)
+
+        else:
+            raise ValueError()
 
         self._features = features
         self._results = results
