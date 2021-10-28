@@ -64,10 +64,10 @@ class TestEnv:
                 scenario_path
             )
             results: Dict[str, Dict[str, float]] = {}
-            for conf in range(len(conf2index)):
-                results[str(conf)] = {}
-                for inst in range(np.shape(data)[0]):
-                    results[str(conf)][str(inst)] = data[inst][conf]
+            for inst in range(np.shape(data)[0]):
+                results[str(inst)] = {}
+                for conf in range(len(conf2index)):
+                    results[str(inst)][str(conf)] = data[inst][conf]
             cutoff_time = np.amax(data)
             # Convert list to np.ndarray
             features: Dict[int, np.ndarray] = {k: np.asarray(v) for k, v in features.items()}
