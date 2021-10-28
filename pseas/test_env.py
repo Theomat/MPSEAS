@@ -1,22 +1,27 @@
-from pseas.data.prior_information import compute_all_prior_information, resultdict2matrix
-from pseas.data.aslib_scenario import ASlibScenario
+from enum import Enum
+from typing import Dict, Generator, List, Optional, Tuple, Union
+
+import numpy as np
+
+import pseas.data.configuration_time_loader as configuration_extractor
 import pseas.data.data_transformer as data_transformer
 import pseas.data.feature_extractor as feature_extractor
 import pseas.data.result_extractor as result_extractor
-import pseas.data.configuration_time_loader as configuration_extractor
-
-from enum import Enum
-from typing import Generator, List, Tuple, Optional, Dict, Union
-
-import numpy as np
+from pseas.data.aslib_scenario import ASlibScenario
+from pseas.data.prior_information import (
+    compute_all_prior_information,
+    resultdict2matrix,
+)
 
 
 class ResetChoice(Enum):
     """Defines the type of reset for an environement."""
+
     RESET_BEST = 0
     """Compare against the best performing algorithm."""
     RESET_RANDOM = 1
     """Compare against a random algorithm."""
+
 
 class TestEnv:
     """
@@ -26,12 +31,21 @@ class TestEnv:
     -----------
     - seed (Optional[int]) - the seed to use. Default: None.
     """
-    def __init__(self, scenario_path: str, distribution: str = "cauchy", par_penalty: float = 1, verbose: bool = True, seed: Optional[int] = None, data_type: Optional[str] = "aslib") -> None:
+
+    def __init__(
+        self,
+        scenario_path: str,
+        distribution: str = "cauchy",
+        par_penalty: float = 1,
+        verbose: bool = True,
+        seed: Optional[int] = None,
+        data_type: Optional[str] = "aslib",
+    ) -> None:
         self._generator = np.random.default_rng(seed)
         self.par_penalty: float = par_penalty
 
-        if data_type=="aslib":
-            
+        if data_type == "aslib":
+
             scenario = ASlibScenario()
             scenario.read_scenario(scenario_path)
             scenario.check_data(1)
@@ -40,18 +54,23 @@ class TestEnv:
             results = result_extractor.from_scenario(scenario)
 
             features, results, cutoff_time = data_transformer.prepare_dataset(
-                features, results)   
+                features, results
+            )
             cutoff_time = scenario.algorithm_cutoff_time
 
-        elif data_type=="config":
-            
-            _,_,data,features = configuration_extractor.load_configuration_data(scenario_path)
-            results:Dict[str,Dict[str,float]]={}
-            for inst in range(np.shape(data)[0]):
-                results[str(inst)]={}
-                for conf in range(len(data[inst])):
-                    results[str(inst)][str(conf)]=data[inst][conf]
-            cutoff_time=np.amax(data)
+        elif data_type == "config":
+
+            _, conf2index, data, features = configuration_extractor.load_configuration_data(
+                scenario_path
+            )
+            results: Dict[str, Dict[str, float]] = {}
+            for conf in range(len(conf2index)):
+                results[str(conf)] = {}
+                for inst in range(np.shape(data)[0]):
+                    results[str(conf)][str(inst)] = data[inst][conf]
+            cutoff_time = np.amax(data)
+            # Convert list to np.ndarray
+            features: Dict[int, np.ndarray] = {k: np.asarray(v) for k, v in features.items()}
 
         else:
             raise ValueError()
@@ -69,15 +88,19 @@ class TestEnv:
         self._removed_algorithms_has_changed: bool = False
 
         if verbose:
-            print("Using", self._n_instances,
-                  "instances with", self._n_algorithms, "algorithms.")
+            print(
+                "Using",
+                self._n_instances,
+                "instances with",
+                self._n_algorithms,
+                "algorithms.",
+            )
             print("Cutoff time=", cutoff_time)
         # stats
         self._correct: List[bool] = []
         self._time_ratio: List[float] = []
         self._choices: List[int] = []
         self._history: List[List] = []
-
 
     @property
     def action_space(self) -> List[int]:
@@ -97,13 +120,18 @@ class TestEnv:
         return [x for x in self.action_space if not self._done[x]]
 
     def __state__(self) -> Tuple[List[Optional[float]], List[float]]:
-        times: List[Optional[float]] = [self._evaluating_times[i]
-                                        if self._done[i] else None for i in range(self._n_instances)]
-        times_cmp: List[float] = [self._comparing_times[i]
-                                  for i in range(self._n_instances)]
+        times: List[Optional[float]] = [
+            self._evaluating_times[i] if self._done[i] else None
+            for i in range(self._n_instances)
+        ]
+        times_cmp: List[float] = [
+            self._comparing_times[i] for i in range(self._n_instances)
+        ]
         return times, times_cmp
 
-    def reset(self, choice: Union[ResetChoice, Tuple[int,int]] = ResetChoice.RESET_RANDOM) -> Tuple[Tuple[List[Optional[float]], List[float], bool], Dict]:
+    def reset(
+        self, choice: Union[ResetChoice, Tuple[int, int]] = ResetChoice.RESET_RANDOM
+    ) -> Tuple[Tuple[List[Optional[float]], List[float], bool], Dict]:
         """
         Reset the current state of the environment.
 
@@ -125,13 +153,13 @@ class TestEnv:
             # Then choose algorithm to compare to
             comparing: int = evaluating
             if choice is ResetChoice.RESET_BEST:
-                comparing = None # we do it later
+                comparing = None  # we do it later
             else:
                 while comparing == evaluating:
-                    comparing = self._generator.integers(
-                        0, self._n_algorithms)
+                    comparing = self._generator.integers(0, self._n_algorithms)
         else:
             if self._removed_algorithms:
+
                 def convert(x: int) -> int:
                     allowed_count = -1
                     for i in range(self._n_algorithms):
@@ -139,49 +167,65 @@ class TestEnv:
                             allowed_count += 1
                             if allowed_count == x:
                                 return i
-                    print( "Fatal error: chosen", x, "while max was:", allowed_count)
+                    print("Fatal error: chosen", x, "while max was:", allowed_count)
                     assert False
+
                 evaluating: int = convert(choice[0])
                 comparing: int = convert(choice[1])
             else:
                 evaluating: int = choice[0]
                 comparing: int = choice[1]
 
-        
         eval_name: str = self._index2algo[evaluating]
 
-        information_has_changed: bool = True 
+        information_has_changed: bool = True
         # Do as if evaluating never existed in data
         if len(self._history) > 0 and evaluating == self._history[-1][0]:
             # Recompute if removed algorithms changed
             information_has_changed = self._removed_algorithms_has_changed
             self._removed_algorithms_has_changed = False
-            
+
         # Recompute information
         if information_has_changed:
             removed_names = [self._index2algo[x] for x in self._removed_algorithms]
-            results = {instance:
-                       {algo: time for algo, time in times.items() 
-                            if eval_name != algo and algo not in removed_names}
-                       for instance, times in self._results.items()}
+            results = {
+                instance: {
+                    algo: time
+                    for algo, time in times.items()
+                    if eval_name != algo and algo not in removed_names
+                }
+                for instance, times in self._results.items()
+            }
             information = compute_all_prior_information(
-                self._features, results, None, self._distribution, self._cutoff_time, self.par_penalty)
+                self._features,
+                results,
+                None,
+                self._distribution,
+                self._cutoff_time,
+                self.par_penalty,
+            )
             # Get its times
             self._evaluating_times: np.ndarray = np.array(
-                [self._results[instance][eval_name] for instance in self._features.keys()])
+                [
+                    self._results[instance][eval_name]
+                    for instance in self._features.keys()
+                ]
+            )
             self._last_info = information
         else:
             information = self._last_info
 
-
         # we do it now that we have the data
         if comparing is None:
             comparing = np.argmin(np.sum(information["perf_matrix"], axis=0))
-       
 
         comparing_name: str = self._index2algo[comparing]
         self._comparing_times: np.ndarray = np.array(
-            [self._results[instance][comparing_name] for instance in self._features.keys()])
+            [
+                self._results[instance][comparing_name]
+                for instance in self._features.keys()
+            ]
+        )
 
         self._history.append([evaluating, comparing, False])
 
@@ -219,15 +263,27 @@ class TestEnv:
             comparing_name: str = self._index2algo[cmp]
 
             evaluating_times: np.ndarray = np.array(
-                [self._results[instance][eval_name] for instance in self._features.keys()])
+                [
+                    self._results[instance][eval_name]
+                    for instance in self._features.keys()
+                ]
+            )
             comparing_times: np.ndarray = np.array(
-                [self._results[instance][comparing_name] for instance in self._features.keys()])
-            penalty_eval: float = np.sum(
-                evaluating_times >= self._cutoff_time) * (self.par_penalty - 1)
-            penalty_comparing: float = np.sum(
-                comparing_times >= self._cutoff_time) * (self.par_penalty - 1)
-            is_better: bool = np.sum(
-                evaluating_times) + penalty_eval < np.sum(comparing_times) + penalty_comparing
+                [
+                    self._results[instance][comparing_name]
+                    for instance in self._features.keys()
+                ]
+            )
+            penalty_eval: float = np.sum(evaluating_times >= self._cutoff_time) * (
+                self.par_penalty - 1
+            )
+            penalty_comparing: float = np.sum(comparing_times >= self._cutoff_time) * (
+                self.par_penalty - 1
+            )
+            is_better: bool = (
+                np.sum(evaluating_times) + penalty_eval
+                < np.sum(comparing_times) + penalty_comparing
+            )
             self._correct[index] = better == is_better
 
     def step(self, instance: int) -> Tuple[List[Optional[float]], List[float]]:
@@ -245,36 +301,48 @@ class TestEnv:
         If the algorithm wasn't run on a problem it is replaced by None.
         times_comparing (List[float]) is a list containing the times the algorithm we are comparing against took on the instances.
         """
-        assert not self._done[instance], f"Instance {instance} was already chosen ! Choose in: {self.legal_moves()}"
+        assert not self._done[
+            instance
+        ], f"Instance {instance} was already chosen ! Choose in: {self.legal_moves()}"
         self._done[instance] = True
         return self.__state__()
 
     @property
     def n_algorithms(self) -> int:
         """
-        Number of algorithms in the current dataset. 
+        Number of algorithms in the current dataset.
         """
         return self._n_algorithms - len(self._removed_algorithms)
-
 
     @property
     def is_better(self) -> bool:
         """
         Return true iff the challenger is better than the incumbent.
         """
-        penalty_eval: float = np.sum(
-            self._evaluating_times >= self._cutoff_time) * (self.par_penalty - 1)
+        penalty_eval: float = np.sum(self._evaluating_times >= self._cutoff_time) * (
+            self.par_penalty - 1
+        )
         penalty_comparing: float = np.sum(
-            self._comparing_times >= self._cutoff_time) * (self.par_penalty - 1)
-        return np.sum(self._evaluating_times) + penalty_eval < np.sum(self._comparing_times) + penalty_comparing
-
+            self._comparing_times >= self._cutoff_time
+        ) * (self.par_penalty - 1)
+        return (
+            np.sum(self._evaluating_times) + penalty_eval
+            < np.sum(self._comparing_times) + penalty_comparing
+        )
 
     @property
     def current_time(self) -> float:
         """
         Total time used so far by the challenger.
         """
-        return sum([self._evaluating_times[i] for i in range(self._n_instances) if self._done[i]])
+        return sum(
+            [
+                self._evaluating_times[i]
+                for i in range(self._n_instances)
+                if self._done[i]
+            ]
+        )
+
     @property
     def current_instances(self) -> int:
         """
@@ -297,34 +365,51 @@ class TestEnv:
         return np.sum(self._evaluating_times)
 
     @property
-    def score(self, estimator= np.median) -> float:
+    def score(self, estimator=np.median) -> float:
         correct = estimator(self._correct)
         time_ratio = estimator(self._time_ratio)
-        return (correct - .5) * 2 * (1 - time_ratio)
+        return (correct - 0.5) * 2 * (1 - time_ratio)
 
     def stats(self, estimator=np.median) -> Tuple[float, float, float]:
-        return estimator(self._correct), estimator(self._time_ratio), estimator(self._choices)
+        return (
+            estimator(self._correct),
+            estimator(self._time_ratio),
+            estimator(self._choices),
+        )
 
-    def runs(self) -> Generator[Tuple[int, int, float, float, bool, bool, float, int], None, None]:
+    def runs(
+        self,
+    ) -> Generator[Tuple[int, int, float, float, bool, bool, float, int], None, None]:
         for index, (eval, cmp, better) in enumerate(self._history):
             eval_name: str = self._index2algo[eval]
             comparing_name: str = self._index2algo[cmp]
 
             evaluating_times: np.ndarray = np.array(
-                [self._results[instance][eval_name] for instance in self._features.keys()])
+                [
+                    self._results[instance][eval_name]
+                    for instance in self._features.keys()
+                ]
+            )
             comparing_times: np.ndarray = np.array(
-                [self._results[instance][comparing_name] for instance in self._features.keys()])
-            penalty_eval: float = np.sum(
-                evaluating_times >= self._cutoff_time) * (self.par_penalty - 1)
-            penalty_comparing: float = np.sum(
-                comparing_times >= self._cutoff_time) * (self.par_penalty - 1)
+                [
+                    self._results[instance][comparing_name]
+                    for instance in self._features.keys()
+                ]
+            )
+            penalty_eval: float = np.sum(evaluating_times >= self._cutoff_time) * (
+                self.par_penalty - 1
+            )
+            penalty_comparing: float = np.sum(comparing_times >= self._cutoff_time) * (
+                self.par_penalty - 1
+            )
 
-            perf_eval: float = np.sum(
-                evaluating_times) + penalty_eval
+            perf_eval: float = np.sum(evaluating_times) + penalty_eval
             perf_cmp: float = np.sum(comparing_times) + penalty_comparing
-            is_better: bool = perf_eval < perf_cmp 
+            is_better: bool = perf_eval < perf_cmp
 
-            yield eval, cmp, perf_eval, perf_cmp, is_better, better, self._time_ratio[index], self._choices[index]
+            yield eval, cmp, perf_eval, perf_cmp, is_better, better, self._time_ratio[
+                index
+            ], self._choices[index]
 
     def get_total_perf_matrix(self) -> np.ndarray:
         return resultdict2matrix(self._results, None)[0]
