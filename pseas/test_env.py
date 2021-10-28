@@ -70,7 +70,7 @@ class TestEnv:
                     results[str(inst)][str(conf)] = data[inst][conf]
             cutoff_time = np.amax(data)
             # Convert list to np.ndarray
-            features: Dict[int, np.ndarray] = {k: np.asarray(v) for k, v in features.items()}
+            features: Dict[str, np.ndarray] = {str(k): np.asarray(v) for k, v in features.items()}
 
         else:
             raise ValueError()
@@ -205,6 +205,7 @@ class TestEnv:
                 self.par_penalty,
             )
             # Get its times
+        
             self._evaluating_times: np.ndarray = np.array(
                 [
                     self._results[instance][eval_name]
