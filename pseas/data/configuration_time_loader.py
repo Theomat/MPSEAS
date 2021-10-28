@@ -47,5 +47,6 @@ def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], 
 
 if __name__ == "__main__":
     d = load_configuration_data("./rundata/kissat_ibm")
-    assert d[2].shape == (684, 100)
+    assert d[2].shape == (684, 100), "Data matrix has incorrect size"
+    assert len(d[3]) == 684, "One feature vector per instance"
     print("All good!")
