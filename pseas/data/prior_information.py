@@ -76,7 +76,7 @@ def resultdict2matrix(results: Dict[str, Dict[str, float]], algorithms: Optional
     return perf_matrix, instance2index, algorithm2index
 
 
-def compute_all_prior_information(features_dict: Dict[str, np.ndarray], results: Dict[str, Dict[str, float]], algorithms, distribution: str, cutoff_time: float, par_penalty: float) -> Dict[str, Any]:
+def compute_all_prior_information(features_dict: Dict[str, np.ndarray], results: Dict[str, Dict[str, float]], algorithms: Optional[List[str]], distribution: str, cutoff_time: float, par_penalty: float) -> Dict[str, Any]:
     """
     Computes:
         - time bounds for each instance
@@ -98,8 +98,12 @@ def compute_all_prior_information(features_dict: Dict[str, np.ndarray], results:
     feature_vect_len: int = features_dict[list(
         features_dict.keys())[0]].shape[0]
     features = np.zeros((perf_matrix.shape[0], feature_vect_len), dtype=float)
+
     for inst, vect in features_dict.items():
-        features[instance2index[inst]] = vect
+        if isinstance(inst, int):
+            features[inst] = vect
+        else:
+            features[instance2index[inst]] = vect
 
     # Compute same class distributions
     same_class_distributions = fit_same_class(distribution, perf_matrix)
