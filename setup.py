@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
 
-setup(name="pseas",
-      version="0.0.1",
-      description="Per Set Efficient Algorithm Selection (PSEAS)",
+setup(name="mpseas",
+      version="0.0.2",
+      description="Model-based Per Set Efficient Algorithm Selection (MPSEAS)",
       author="Théo Matricon",
       author_email="theomatricon@gmail.com",
       packages=find_packages(),
@@ -15,6 +15,7 @@ setup(name="pseas",
           "pandas",
           "tqdm",
           "matplotlib",
-          "seaborn"
+          "seaborn",
+          "pyrfr"
       ],
-      license="?")
+      license="MIT")
