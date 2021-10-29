@@ -22,6 +22,7 @@ from pseas.discrimination.wilcoxon import Wilcoxon
 from pseas.discrimination.distribution_based import DistributionBased
 from pseas.instance_selection.random_baseline import RandomBaseline
 from pseas.instance_selection.discrimination_based import DiscriminationBased
+from pseas.instance_selection.udd import UDD
 from pseas.instance_selection.ranking_based import RankingBased
 from pseas.instance_selection.variance_based import VarianceBased
 from pseas.instance_selection.information_based import InformationBased
@@ -105,10 +106,6 @@ output_suffix: str = scenario_path.strip('/').split('/')[-1]+'_'+str(nb_configur
 # Start Strategy Definition
 # =============================================================================
 
-# Must not be a lambda function to be picklable
-def norm2_distance(x: np.ndarray, y: np.ndarray) -> float:
-    return np.linalg.norm(x-y)
-
 
 discriminators = [
     # lambda: DistributionBased("cauchy", confidence=101),
@@ -120,6 +117,8 @@ selectors = [
     lambda: RandomBaseline(0),
     lambda: DiscriminationBased(1.2),
     #lambda: RankingBased(),
+    lambda: UDD(alpha=0, beta=0), # Uncertainty sampling
+    lambda: UDD(alpha=1, beta=1), # Find optimal alpha, beta?
     lambda: VarianceBased(),
     lambda: InformationBased(),
     # lambda: DistanceBased("norm2-based", norm2_distance),
