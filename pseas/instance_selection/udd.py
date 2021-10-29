@@ -34,16 +34,14 @@ class UDD(InstanceSelection):
 
     Uncertainty, Density, Diversity in [0;1] 
 
-    samples: int - number of configuration samples to take for uncertainty step
     k: int - number of neighbours for density step
 
     TODO: 
     - missing self.distance
     """
 
-    def __init__(self, samples : int = 100, alpha: float = 1, beta: float = 1, k : int = 5) -> None:
+    def __init__(self, alpha: float = 1, beta: float = 1, k : int = 5) -> None:
         super().__init__()
-        self.samples: int = samples
         self.alpha: float = alpha
         self.beta: float = beta
         self.k : int = k
@@ -106,18 +104,20 @@ class UDD(InstanceSelection):
             [i for i, time in enumerate(state[0]) if time is None])
         
         uncertainties = self.__uncertainty(not_done_instances)
-        densities = self.__density(not_done_instances)
-        diversities = self.__diversity(not_done_instances)
         # Normalize values in [0, 1]
         uncertainties -= np.min(uncertainties)
-        densities -= np.min(densities)
-        diversities -= np.min(diversities)
         uncertainties /= np.max(uncertainties)
-        densities /= np.max(densities)
-        diversities /= np.max(diversities)
-
-        # Not convinced by these two steps
-        scores = uncertainties + self.alpha * densities - self.beta * diversities
+        if self.alpha == 0 and self.beta == 0:
+            scores = uncertainties
+        else:
+            densities = self.__density(not_done_instances)
+            diversities = self.__diversity(not_done_instances)
+            # Normalize values in [0, 1]
+            densities -= np.min(densities)
+            diversities -= np.min(diversities)
+            densities /= np.max(densities)
+            diversities /= np.max(diversities)
+            scores = uncertainties + self.alpha * densities - self.beta * diversities
         for i in range(self.n_instances):
             if state[0][i] is not None:
                 scores[i] = 1e30
@@ -128,7 +128,7 @@ class UDD(InstanceSelection):
         return self._next
 
     def name(self) -> str:
-        return "UDD"
+        return "Uncertainty" if self.alpha == 0 and self.beta == 0 else "UDD"
 
     def clone(self) -> 'UDD':
-        return UDD(self.samples, self.alpha, self.beta, self.k)
+        return UDD(self.alpha, self.beta, self.k)
