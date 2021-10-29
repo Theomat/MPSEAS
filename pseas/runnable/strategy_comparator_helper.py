@@ -77,7 +77,7 @@ def __evaluate__(scenario_path: str, distribution: str, strategy: Strategy,
                 last_time_ratio = time_ratio
 
             if not finished and strategy.get_current_choice_confidence() >= .95:
-                if isinstance(strategy._prediction, Wilcoxon) and env.current_instances < 5:
+                if isinstance(strategy._discrimination, Wilcoxon) and env.current_instances < 5:
                     continue
                 finished = True
                 real["a_old"].append(cmp)
