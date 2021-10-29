@@ -39,7 +39,6 @@ class UDD(InstanceSelection):
 
     TODO: 
     - missing self.distance
-    - new uncertainty measure
     """
 
     def __init__(self, samples : int = 100, alpha: float = 1, beta: float = 1, k : int = 5) -> None:
@@ -49,9 +48,9 @@ class UDD(InstanceSelection):
         self.beta: float = beta
         self.k : int = k
 
-    def ready(self, model, configuration_distribution, features, **kwargs) -> None:
+    def ready(self, model, features, challenger_configuration, **kwargs) -> None:
         self.model = model
-        self.configuration_distribution = configuration_distribution
+        self.challenger_configuration = challenger_configuration
         self._distances = __compute_distance_matrix__(features, self.distance)
         self.n_instances: int = self.features.shape[0]
 
@@ -65,17 +64,11 @@ class UDD(InstanceSelection):
         """
         Original: Difference between max vote and max second vote for classification
         
-        Ours: |E[model_uncertainty(instance, X)] where X ~ configuration"""
+        Ours: variance of predictions among forest"""
         uncertainty: np.ndarray = np.zeros(self.n_instances)
         for instance in not_done_instances:
-            configurations = self.configuration_distribution(self.samples)
-            total_uncertainty: float = 0
-            coeff_sums: float = 0
-            for p, configuration in configurations:
-                _, uncert = self.model(configuration, instance)
-                coeff_sums += p
-                total_uncertainty += uncert * p
-            uncertainty[instance] = total_uncertainty / max(1e-10, coeff_sums)
+            _, var = self.model.predict(self.challenger_configuration, instance)
+            uncertainty[instance] = var
         return uncertainty
 
     def __k_nearest_neighbours(self, instance, not_done_instances):
