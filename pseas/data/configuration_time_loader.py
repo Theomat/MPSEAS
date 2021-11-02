@@ -7,7 +7,7 @@ import numpy as np
 def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], np.ndarray]:
     """
     
-    Return: (instance_name2int, configuration2int, data, features)
+    Return: (instance_name2int, configuration2int, data, features, configurations)
     """
     instance_name2int: Dict[str, int] = {}
     configuration2int: Dict[str, int] = {}
@@ -40,13 +40,39 @@ def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], 
         next(reader)
         for row in reader:
             features[instance_name2int[row[0]]] = [float(val) for val in row[1:]]
-    
-    return instance_name2int, configuration2int, data, features
+
+    configurations: Dict[str, np.ndarray]={}
+    parameters=set()
+    for conf in configuration2int.keys(): 
+        for param in conf.lstrip('-').split(' -'):
+            parameters.add(param.split(" '")[0])
+    parameter_list=np.array(sorted(list(parameters)))
+
+    default=np.full(len(parameter_list),None)
+    with open(os.path.join(path, "default.txt")) as fd:
+        row=fd.readline()
+        for param in row.lstrip('-').split(' -'):
+            
+            param_name, param_value = param.strip("'").split(" '")
+            default[np.where(parameter_list == param_name)]=param_value
+
+    for conf in configuration2int.keys():
+        configurations[str(configuration2int[conf])]=default
+        for param in conf.lstrip('-').split(' -'):
+            param_name, param_value = param.strip("'").split(" '")
+            try:
+                param_value=float(param_value)
+            except:
+                pass
+            configurations[configuration2int[conf]][np.where(parameter_list == param_name)] = param_value
+            
+    return instance_name2int, configuration2int, data, features, configurations
 
 
 
 if __name__ == "__main__":
     d = load_configuration_data("./rundata/kissat_ibm")
+    print(d[4])
     assert d[2].shape == (684, 100), "Data matrix has incorrect size"
     assert np.min(d[2]) > 0, " A time should be positive"
     assert len(d[3]) == 684, "One feature vector per instance"
