@@ -234,7 +234,7 @@ def callback(future):
 
 def run(scenario_path, max_workers, par):
     print()
-    env = TestEnv(scenario_path, data_type="config")
+    env = TestEnv(scenario_path)
     n_algos = env.n_algorithms
     dataset_name: str = scenario_path[scenario_path.rfind("/")+1:]
     # Generate strategies
@@ -258,7 +258,7 @@ def run(scenario_path, max_workers, par):
                     total -= len(dico["a_new_done"])
                 strategies.append([strat, dico])
     pbar.total += total
-    compare(scenario_path, strategies, "cauchy", callback, n_algorithms=n_algos, data_type="config",
+    compare(scenario_path, strategies, "cauchy", callback, n_algorithms=n_algos,
             verbose=False, par_penalty=par, max_workers=max_workers, close_pool=True)
 
 

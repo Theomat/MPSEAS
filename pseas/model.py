@@ -36,12 +36,13 @@ def create_model(num_trees: int = 10, seed: int = 0) -> Model:
 
     return Model(the_forest, rng)
 
-def create_dataset(instance_features: Dict[str, np.ndarray], configurations: Dict[str, np.ndarray], data : np.ndarray) -> pyrfr.regression.data_base:
-    forest_data = pyrfr.regression.default_data_container_with_instances(len(configurations['0']),len(instance_features['0']))
+def create_dataset(instance_features: Dict[int, np.ndarray], configurations: Dict[int, np.ndarray], data : np.ndarray) -> pyrfr.regression.data_base:
+    #TODO this will crash if there is no instance 0 or config 0
+    forest_data = pyrfr.regression.default_data_container_with_instances(len(configurations[0]),len(instance_features[0]))
     for c in configurations.keys():
         forest_data.add_configuration(list(configurations[c]))
     for inst in instance_features.keys():
-        forest_data.add_instance(instance_features[inst])
+        forest_data.add_instance(list(instance_features[inst]))
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
             forest_data.add_data_point(j, i, data[i][j])

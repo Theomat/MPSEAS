@@ -18,10 +18,9 @@ def __evaluate__(scenario_path: str, distribution: str, strategy: Strategy,
                  par_penalty: float,  
                  algorithm: int,
                  removed_algorithms: List[int] = [],
-                 data_type: str = "aslib",
                  verbose: bool = False, **kwargs) -> Tuple[Strategy, TestEnv, Dict]:
     env: TestEnv = TestEnv(
-        scenario_path, distribution, seed=0, verbose=verbose, par_penalty=par_penalty, data_type=data_type)
+        scenario_path, distribution, seed=0, verbose=verbose, par_penalty=par_penalty)
     env.set_removed_algorithms(removed_algorithms)
     stats = {
             "time": [],
@@ -123,7 +122,6 @@ def compare(scenario_path: str,
             par_penalty: float = 1,
             max_workers: Optional[int] = None,
             close_pool: bool = True,
-            data_type: str = "aslib",
             verbose: bool = False) -> Dict[str, Dict[str, float]]:
     """
     Compare the different startegies on this dataset.
@@ -138,7 +136,6 @@ def compare(scenario_path: str,
     - n_algorithms (int) - number of algorithms in this dataset
     - par_penalty (float) - par penalty coefficient. Default: 1.
     - max_workers (Optional[int]) - the number of workers to use. Default: None.
-    - data_type (str) - the data type of the test env. Default: aslib.
     - verbose (bool) - print info to stdout. Default: False.
     """
     executor = ProcessPoolExecutor(max_workers)
@@ -147,7 +144,7 @@ def compare(scenario_path: str,
         for strategy, kwargs in strategies:
             if algorithm in kwargs.get("a_new_done", []):
                 continue
-            future = executor.submit(__evaluate__, scenario_path, distribution, strategy.clone(), par_penalty, algorithm, removed_algorithms, data_type, verbose, **kwargs)
+            future = executor.submit(__evaluate__, scenario_path, distribution, strategy.clone(), par_penalty, algorithm, removed_algorithms, verbose, **kwargs)
             future.add_done_callback(callback)
             futures.append(future) 
 

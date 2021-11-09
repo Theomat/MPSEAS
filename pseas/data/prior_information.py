@@ -45,10 +45,11 @@ def fit_rf_model(features_dict: Dict[str, np.ndarray], results: Dict[str, Dict[s
     """
     model: rf.Model = rf.create_model()
     
-    data = rf.create_dataset(features_dict, configurations, resultdict2matrix(results)[0])
+    data = rf.create_dataset(features_dict, configurations, results)
 
     model.fit(data)
 
+#TODO : this should not be used anymore
 def resultdict2matrix(results: Dict[str, Dict[str, float]], algorithms: Optional[List[str]]=None) -> Tuple[np.ndarray, Dict[str, int], Dict[str, int]]:
     """
     Transform a results dictionnary into a performance matrix.
@@ -86,18 +87,20 @@ def resultdict2matrix(results: Dict[str, Dict[str, float]], algorithms: Optional
     return perf_matrix, instance2index, algorithm2index
 
 
-def compute_all_prior_information(features_dict: Dict[str, np.ndarray], results: Dict[str, Dict[str, float]], algorithms: Optional[List[str]], distribution: str, configurations: Dict[str, np.ndarray] ,  cutoff_time: float, par_penalty: float, fit_distribution: bool = True, fit_model: bool = False) -> Dict[str, Any]:
+def compute_all_prior_information(features_dict: Dict[int, np.ndarray], results: np.ndarray, algorithms: Optional[List[str]], distribution: str, configurations: Dict[int, np.ndarray] ,  cutoff_time: float, par_penalty: float, removed_algorithms: List[int], removed_instances: List[int],  fit_distribution: bool = True, fit_model: bool = False) -> Dict[str, Any]:
     """
     Computes:
         - time bounds for each instance
         - compute features matrix (assumed missing features have been replaced)
         - compute distributions of running times for each instance
+        - fit a random forest performance prediction model
     
     Returns:
         a dictionnary containing all information that is given in strategy.ready()
     """
-    perf_matrix, instance2index, _ = resultdict2matrix(
-        results, algorithms)
+    #TODO handle removed algo and instances here?
+
+    perf_matrix=results
 
     # Compute time bounds
     time_bounds = np.zeros((perf_matrix.shape[0], 2))

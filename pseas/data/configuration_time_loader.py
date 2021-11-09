@@ -4,11 +4,21 @@ from typing import Dict, Tuple
 import numpy as np
 
 
-def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], np.ndarray]:
+def load_configuration_data(path: str) -> Tuple[np.ndarray, Dict[int,np.ndarray], Dict[int,np.ndarray]]:
     """
-    
-    Return: (instance_name2int, configuration2int, data, features, configurations)
+    reads the files in the given directory and returns the performances, instances and configurations
+    The directory needs to contain the following files:
+        configlist.csv : contains configuration_id, configuration_string
+        instancelist.csv : contain instance_id, instance_name
+        perflist.csv : contains configuration_id, instance)id, performance
+        features.txt : contains instance_name, one column per feature
+        default.txt : contains the string of the default configuration
+    Return: (data, instance_features, configurations)
     """
+
+    #TODO : we shoult probably use the configuration space description file and the ConfigSpace library
+
+    #load configuration strings
     instance_name2int: Dict[str, int] = {}
     configuration2int: Dict[str, int] = {}
     with open(os.path.join(path, "configlist.csv")) as fd:
@@ -18,6 +28,7 @@ def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], 
         for row in reader:
             configuration2int[row[1]] = int(row[0])
 
+    # load instance names and id
     with open(os.path.join(path, "instancelist.csv")) as fd:
         reader = csv.reader(fd)
         # Skip first line
@@ -25,23 +36,27 @@ def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], 
         for row in reader:
             instance_name2int[row[1]] = int(row[0])
 
-    data = np.zeros((len(instance_name2int), len(configuration2int)), dtype=float)
+    # load performance data
+    data = np.zeros((len(instance_name2int), len(configuration2int)), dtype=np.double)
     with open(os.path.join(path, "perflist.csv")) as fd:
         reader = csv.reader(fd)
         # Skip first line
         next(reader)
         for row in reader:
-            data[int(row[1]), int(row[0])] = float(row[2])
+            data[int(row[1]), int(row[0])] = np.double(row[2])
 
-    features: Dict[int, list]={}
+    # load instances features
+    instance_features: Dict[int, np.array]={}
     with open(os.path.join(path, "features.txt")) as fd:
         reader = csv.reader(fd)
         # Skip first line
         next(reader)
         for row in reader:
-            features[instance_name2int[row[0]]] = [float(val) for val in row[1:]]
+            instance_features[instance_name2int[row[0]]] = np.array([np.double(val) for val in row[1:]],dtype=np.double)
 
-    configurations: Dict[str, np.ndarray]={}
+    # convert configuration strings into lists of double
+    #TODO: this is a bit hacky, will work only for kissat for now
+    configurations: Dict[int, np.ndarray]={}
     parameters=set()
     for conf in configuration2int.keys(): 
         for param in conf.lstrip('-').split(' -'):
@@ -57,7 +72,7 @@ def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], 
             default[np.where(parameter_list == param_name)]=param_value
 
     for conf in configuration2int.keys():
-        configurations[str(configuration2int[conf])]=default
+        configurations[configuration2int[conf]]=default
         for param in conf.lstrip('-').split(' -'):
             param_name, param_value = param.strip("'").split(" '")
             #TODO this is a bad hack, we need to figure out how to replace string values by integers/floats: use the same library as SMAC?
@@ -66,17 +81,17 @@ def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], 
                 param_value=float(param_value)
             except:
                 pass
-            configurations[str(configuration2int[conf])][np.where(parameter_list == param_name)] = param_value
-        configurations[str(configuration2int[conf])]=configurations[str(configuration2int[conf])].astype(np.double)
+            configurations[configuration2int[conf]][np.where(parameter_list == param_name)] = param_value
+        configurations[configuration2int[conf]]=configurations[configuration2int[conf]].astype(np.double)
             
-    return instance_name2int, configuration2int, data, features, configurations
+    return data, instance_features, configurations
 
 
 
 if __name__ == "__main__":
     d = load_configuration_data("./rundata/kissat_ibm")
-    print(d[4])
-    assert d[2].shape == (684, 100), "Data matrix has incorrect size"
-    assert np.min(d[2]) > 0, " A time should be positive"
-    assert len(d[3]) == 684, "One feature vector per instance"
+    #print(d[2][1])
+    assert d[0].shape == (684, 100), "Data matrix has incorrect size"
+    assert np.min(d[0]) > 0, " A time should be positive"
+    assert len(d[1]) == 684, "One feature vector per instance"
     print("All good!")
