@@ -43,6 +43,7 @@ class TestEnv:
     ) -> None:
         self._generator = np.random.default_rng(seed)
         self.par_penalty: float = par_penalty
+        self._configurations: Dict[str, np.ndarray] = {}
 
         if data_type == "aslib":
 
@@ -60,7 +61,7 @@ class TestEnv:
 
         elif data_type == "config":
 
-            _, conf2index, data, features = configuration_extractor.load_configuration_data(
+            _, conf2index, data, features, configurations = configuration_extractor.load_configuration_data(
                 scenario_path
             )
             results: Dict[str, Dict[str, float]] = {}
@@ -70,7 +71,8 @@ class TestEnv:
                     results[str(inst)][str(conf)] = data[inst][conf]
             cutoff_time = np.amax(data)
             # Convert list to np.ndarray
-            features: Dict[str, np.ndarray] = {str(k): np.asarray(v) for k, v in features.items()}
+            features: Dict[str, np.ndarray] = {str(k): np.asarray(v,dtype=np.double) for k, v in features.items()}
+            self._configurations = configurations
 
         else:
             raise ValueError()
@@ -201,8 +203,11 @@ class TestEnv:
                 results,
                 None,
                 self._distribution,
+                self._configurations,
                 self._cutoff_time,
                 self.par_penalty,
+                fit_distribution=False,
+                fit_model=True
             )
             # Get its times
         

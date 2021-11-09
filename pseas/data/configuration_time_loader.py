@@ -60,11 +60,14 @@ def load_configuration_data(path: str) -> Tuple[Dict[str, int], Dict[str, int], 
         configurations[str(configuration2int[conf])]=default
         for param in conf.lstrip('-').split(' -'):
             param_name, param_value = param.strip("'").split(" '")
+            #TODO this is a bad hack, we need to figure out how to replace string values by integers/floats: use the same library as SMAC?
+            param_value= 0 if param_value=='false' else 1 if param_value=='true' else param_value
             try:
                 param_value=float(param_value)
             except:
                 pass
-            configurations[configuration2int[conf]][np.where(parameter_list == param_name)] = param_value
+            configurations[str(configuration2int[conf])][np.where(parameter_list == param_name)] = param_value
+        configurations[str(configuration2int[conf])]=configurations[str(configuration2int[conf])].astype(np.double)
             
     return instance_name2int, configuration2int, data, features, configurations
 

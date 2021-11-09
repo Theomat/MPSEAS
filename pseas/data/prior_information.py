@@ -3,6 +3,7 @@ from typing import Any, List, Dict, Optional, Tuple
 import numpy as np
 
 import scipy.stats as st
+import pseas.model as rf
 
 
 def initial_guess(distribution_name: str, data: np.ndarray) -> Dict[str, Any]:
@@ -38,8 +39,17 @@ def fit_same_class(distribution_name: str, perf_matrix: np.ndarray) -> np.ndarra
         prior[instance, 1] = scale
     return prior
 
+def fit_rf_model(features_dict: Dict[str, np.ndarray], results: Dict[str, Dict[str, float]], configurations: Dict[str, np.ndarray]) -> rf.Model :
+    """
+    Fit a random forest model on the data contained in results
+    """
+    model: rf.Model = rf.create_model()
+    
+    data = rf.create_dataset(features_dict, configurations, resultdict2matrix(results)[0])
 
-def resultdict2matrix(results: Dict[str, Dict[str, float]], algorithms: Optional[List[str]]) -> Tuple[np.ndarray, Dict[str, int], Dict[str, int]]:
+    model.fit(data)
+
+def resultdict2matrix(results: Dict[str, Dict[str, float]], algorithms: Optional[List[str]]=None) -> Tuple[np.ndarray, Dict[str, int], Dict[str, int]]:
     """
     Transform a results dictionnary into a performance matrix.
 
@@ -59,7 +69,7 @@ def resultdict2matrix(results: Dict[str, Dict[str, float]], algorithms: Optional
     num_instances: int = len(results.keys())
     num_algorithms: int = len(algorithms)
     perf_matrix: np.ndarray = np.zeros(
-        (num_instances, num_algorithms), dtype=np.float64)
+        (num_instances, num_algorithms), dtype=np.double)
     instance2index: Dict[str, int] = {}
     algorithm2index: Dict[str, int] = {}
     for instance_index, (instance_name, instance_perfs) in enumerate(results.items()):
@@ -76,7 +86,7 @@ def resultdict2matrix(results: Dict[str, Dict[str, float]], algorithms: Optional
     return perf_matrix, instance2index, algorithm2index
 
 
-def compute_all_prior_information(features_dict: Dict[str, np.ndarray], results: Dict[str, Dict[str, float]], algorithms: Optional[List[str]], distribution: str, cutoff_time: float, par_penalty: float) -> Dict[str, Any]:
+def compute_all_prior_information(features_dict: Dict[str, np.ndarray], results: Dict[str, Dict[str, float]], algorithms: Optional[List[str]], distribution: str, configurations: Dict[str, np.ndarray] ,  cutoff_time: float, par_penalty: float, fit_distribution: bool = True, fit_model: bool = False) -> Dict[str, Any]:
     """
     Computes:
         - time bounds for each instance
@@ -106,7 +116,11 @@ def compute_all_prior_information(features_dict: Dict[str, np.ndarray], results:
             features[instance2index[inst]] = vect
 
     # Compute same class distributions
-    same_class_distributions = fit_same_class(distribution, perf_matrix)
+    if fit_distribution:
+        same_class_distributions = fit_same_class(distribution, perf_matrix)
+
+    if fit_model:
+        model = fit_rf_model(features_dict, results, configurations)
 
     return {
         "features": features,
@@ -117,4 +131,5 @@ def compute_all_prior_information(features_dict: Dict[str, np.ndarray], results:
         "time_bounds": time_bounds,
         "cutoff_time": cutoff_time,
         "par_penalty": par_penalty,
+        "model": model
     }
