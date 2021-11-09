@@ -47,5 +47,5 @@ def create_dataset(instance_features: Dict[int, np.ndarray], configurations: Dic
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
             forest_data.add_data_point(j, i, data[i][j])
-    return data
+    return forest_data
 
