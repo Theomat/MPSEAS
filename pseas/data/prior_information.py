@@ -6,6 +6,50 @@ import scipy.stats as st
 import pseas.model as rf
 
 
+def fill_features(features: Dict[int, np.ndarray], ninstances: int) -> np.ndarray:
+    # Fill missing features with mean feature
+    # Contains what's to fill
+    to_fill: List[Tuple[int, Optional[np.np.ndarray]]] = []
+    # Contains the sum of each feature that is not missing
+    total_feature: np.ndarray = None
+    # Contains the number of each feature that is not missing
+    counts: np.ndarray = None
+
+    for instance in range(ninstances):
+        if not instance in features:
+            to_fill.append((instance, None))
+        else:
+            feature = features[instance]
+            missing: np.ndarray = np.isnan(feature)
+            mask: np.ndarray = np.logical_not(missing)
+            # Late initialisation to get the right array size
+            if total_feature is None:
+                total_feature = np.zeros_like(feature)
+                counts = np.zeros_like(total_feature)
+            
+            total_feature[mask] += feature[mask]
+            counts += mask
+            if np.any(missing):
+                to_fill.append((instance, missing))
+    # Now total_feature will contain average feature
+    total_feature /= counts
+    # Fill missings
+    for instance, mask in to_fill:
+        if mask is None:
+            features[instance] = total_feature.copy()
+        else:
+            (features[instance])[mask] = total_feature[mask]
+
+    # To numpy array
+    features_array = np.zeros((ninstances, total_feature.shape[0]))
+    for i in range(ninstances):
+        features_array[i] = features[i]
+
+    return features_array
+
+    
+
+
 def initial_guess(distribution_name: str, data: np.ndarray) -> Dict[str, Any]:
     """
     Make an inital guess to parameters according to distribution and data.
@@ -48,91 +92,3 @@ def fit_rf_model(features_dict: Dict[str, np.ndarray], results: Dict[str, Dict[s
     data = rf.create_dataset(features_dict, configurations, results)
 
     model.fit(data)
-
-#TODO : this should not be used anymore
-def resultdict2matrix(results: Dict[str, Dict[str, float]], algorithms: Optional[List[str]]=None) -> Tuple[np.ndarray, Dict[str, int], Dict[str, int]]:
-    """
-    Transform a results dictionnary into a performance matrix.
-
-    Parameters:
-    -----------
-    - results (Dict[str, Dict[str, float]]) - the results dictionnary
-    - algorithms (Optional[List[str]]) - the list of algorithms to use to compute the matrix. If None all algorithms are used. Default None.
-
-    Return:
-    -----------
-    A tuple (perf_matrix, instance2index, algorithm2index).
-    perf_matrix (np.ndarray) is the performance matrix, row is the instance index and column is the algorithm index.
-    instance2index (Dict[str, int]) a mapping from instance name to row index
-    algorithm2index (Dict[str, int]) a mapping from algorithm name to column index
-    """
-    algorithms = algorithms or results[list(results.keys())[0]].keys()
-    num_instances: int = len(results.keys())
-    num_algorithms: int = len(algorithms)
-    perf_matrix: np.ndarray = np.zeros(
-        (num_instances, num_algorithms), dtype=np.double)
-    instance2index: Dict[str, int] = {}
-    algorithm2index: Dict[str, int] = {}
-    for instance_index, (instance_name, instance_perfs) in enumerate(results.items()):
-        instance2index[instance_name] = instance_index
-        for algorithm_name, perf in instance_perfs.items():
-            if algorithm_name not in algorithms:
-                continue
-            index: int = len(algorithm2index.keys())
-            if algorithm_name in algorithm2index:
-                index = algorithm2index[algorithm_name]
-            else:
-                algorithm2index[algorithm_name] = index
-            perf_matrix[instance_index, index] = perf
-    return perf_matrix, instance2index, algorithm2index
-
-
-def compute_all_prior_information(features_dict: Dict[int, np.ndarray], results: np.ndarray, algorithms: Optional[List[str]], distribution: str, configurations: Dict[int, np.ndarray] ,  cutoff_time: float, par_penalty: float, removed_algorithms: List[int], removed_instances: List[int],  fit_distribution: bool = True, fit_model: bool = False) -> Dict[str, Any]:
-    """
-    Computes:
-        - time bounds for each instance
-        - compute features matrix (assumed missing features have been replaced)
-        - compute distributions of running times for each instance
-        - fit a random forest performance prediction model
-    
-    Returns:
-        a dictionnary containing all information that is given in strategy.ready()
-    """
-    #TODO handle removed algo and instances here?
-
-    perf_matrix=results
-
-    # Compute time bounds
-    time_bounds = np.zeros((perf_matrix.shape[0], 2))
-    time_bounds[:, 0] = np.min(perf_matrix, axis=1)
-    time_bounds[:, 1] = np.max(perf_matrix, axis=1)
-
-    # Compute feature matrix
-    feature_vect_len: int = features_dict[list(
-        features_dict.keys())[0]].shape[0]
-    features = np.zeros((perf_matrix.shape[0], feature_vect_len), dtype=float)
-
-    for inst, vect in features_dict.items():
-        if isinstance(inst, int):
-            features[inst] = vect
-        else:
-            features[instance2index[inst]] = vect
-
-    # Compute same class distributions
-    if fit_distribution:
-        same_class_distributions = fit_same_class(distribution, perf_matrix)
-
-    if fit_model:
-        model = fit_rf_model(features_dict, results, configurations)
-
-    return {
-        "features": features,
-        "results": results,
-        "perf_matrix": perf_matrix,
-        "same_class_distributions": same_class_distributions,
-        "distributions": same_class_distributions,
-        "time_bounds": time_bounds,
-        "cutoff_time": cutoff_time,
-        "par_penalty": par_penalty,
-        "model": model
-    }
