@@ -1,17 +1,10 @@
 from enum import Enum
-from typing import Dict, Generator, List, Optional, Tuple, Union
+from typing import Callable, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 
 import pseas.data.configuration_time_loader as configuration_extractor
-import pseas.data.data_transformer as data_transformer
-import pseas.data.feature_extractor as feature_extractor
-import pseas.data.result_extractor as result_extractor
-from pseas.data.aslib_scenario import ASlibScenario
-from pseas.data.prior_information import (
-    compute_all_prior_information,
-    resultdict2matrix,
-)
+from pseas.data.prior_information import fill_features
 
 
 class ResetChoice(Enum):
@@ -22,7 +15,6 @@ class ResetChoice(Enum):
     RESET_RANDOM = 1
     """Compare against a random algorithm."""
 
-#TODO: currently considers that we ran every non removed algo on every non removed instance. We need a way to update prior_info in a fine grained way (add only partial information). Maybe have data and known_data arrays?
 class TestEnv:
     """
     A test environment to measure the performance of a strategy.
@@ -35,81 +27,52 @@ class TestEnv:
     def __init__(
         self,
         scenario_path: str,
-        distribution: str = "cauchy",
-        par_penalty: float = 1,
         verbose: bool = True,
         seed: Optional[int] = None
     ) -> None:
         self._generator = np.random.default_rng(seed)
-        self.par_penalty: float = par_penalty
-        self._configurations: Dict[int, np.ndarray] = {}
 
         data, features, configurations = configuration_extractor.load_configuration_data(
             scenario_path
         )
-        cutoff_time = np.amax(data)
+        self.ninstances: int = data.shape[0]
+        self.nconfigurations: int = data.shape[1]
+
         self._configurations: Dict[int, np.ndarray] = configurations
-
-        self._features: Dict[int, np.ndarray] = features
+        self._features: np.ndarray = fill_features(features, self.ninstances)
         self._results: np.ndarray = data
-        self._distribution: str = distribution
-        self._cutoff_time: float = cutoff_time
 
-        self._n_instances: int = len(self._features.keys())
-        self._n_algorithms: int = len(self._configurations.keys())
 
-        self._removed_algorithms: List[int] = []
-        self._removed_algorithms_has_changed: bool = False
-
-        
-        self._removed_instances: List[int] = []
-        self._removed_instances_has_changed: bool = False
+        self._enabled: np.ndarray = np.ones_like(self._results, dtype=bool)
+        self._evaluation_mask: np.ndarray = np.ones(self.ninstances, dtype=bool)
 
         if verbose:
             print(
                 "Using",
-                self._n_instances,
+                self.ninstances,
                 "instances with",
-                self._n_algorithms,
+                self.nconfigurations,
                 "algorithms.",
             )
-            print("Cutoff time=", cutoff_time)
         # stats
         self._correct: List[bool] = []
         self._time_ratio: List[float] = []
         self._choices: List[int] = []
         self._history: List[List] = []
 
-    @property
-    def action_space(self) -> List[int]:
-        """
-        The list of possible actions that can be taken.
-        """
-        return list(range(self._n_instances))
-
-    def legal_moves(self) -> List[int]:
-        """
-        Get the list of legal actions in the current state.
-
-        Return:
-        --------
-        A list of valid actions.
-        """
-        return [x for x in self.action_space if not self._done[x]]
-
     def __state__(self) -> Tuple[List[Optional[float]], List[float]]:
         times: List[Optional[float]] = [
-            self._evaluating_times[i] if self._done[i] else None
-            for i in range(self._n_instances)
+            self._challenger_times[i] if self._done[i] else None
+            for i in range(self.ninstances)
         ]
         times_cmp: List[float] = [
-            self._comparing_times[i] for i in range(self._n_instances)
+            self._incumbent_times[i] for i in range(self.ninstances)
         ]
         return times, times_cmp
 
     def reset(
         self, choice: Union[ResetChoice, Tuple[int, int]] = ResetChoice.RESET_RANDOM
-    ) -> Tuple[Tuple[List[Optional[float]], List[float], bool], Dict]:
+    ) -> Tuple[Tuple[List[Optional[float]], List[float]], Dict, bool]:
         """
         Reset the current state of the environment.
 
@@ -127,102 +90,54 @@ class TestEnv:
         """
 
         
-        
         if isinstance(choice, ResetChoice):
             # Choose 2 algorithms
-            evaluating, comparing = self._generator.choice(set(configuration.keys()).difference(self._removed_algorithms),size=2,replace=False)
-            #TODO: we actually want the 'incumbent' to be the best of the subset of algorithms
-#TODO: I don't understand what the following is for:
+            if choice == ResetChoice.RESET_BEST:
+                incumbent = np.argmin(np.sum(self._results[self._enabled], axis=0))
+            evaluating = self._generator.choice([x for x in range(self.nconfigurations) if x != incumbent])
         else:
-            if self._removed_algorithms:
+            incumbent, evaluating = choice
 
-                def convert(x: int) -> int:
-                    allowed_count = -1
-                    for i in range(self._n_algorithms):
-                        if i not in self._removed_algorithms:
-                            allowed_count += 1
-                            if allowed_count == x:
-                                return i
-                    print("Fatal error: chosen", x, "while max was:", allowed_count)
-                    assert False
-
-                evaluating: int = convert(choice[0])
-                comparing: int = convert(choice[1])
-            else:
-                evaluating: int = choice[0]
-                comparing: int = choice[1]
-
-
-        information_has_changed: bool = True
-        # Do as if evaluating never existed in data
-        if len(self._history) > 0 and evaluating == self._history[-1][0]:
-            # Recompute if removed algorithms or instances changed
-            information_has_changed = self._removed_algorithms_has_changed or self._removed_instances_has_changed
-            self._removed_algorithms_has_changed = False
-            self._removed_instances_has_changed = False
-
-        # Recompute information
-        #TODO I think prior_information should be an object we initialize once and update when new data is added. So compute_all_prior once in the init function and update_prior later
-        if information_has_changed:
-            information = compute_all_prior_information(
-                self._features,
-                self._results,
-                None,
-                self._distribution,
-                self._configurations,
-                self._cutoff_time,
-                self.par_penalty,
-                self._removed_algorithms,
-                self._removed_instances,
-                fit_distribution=False,
-                fit_model=True
-            )
-            # Get its times
+        # TODO: fit model
+        model = fit_rf_model(features_dict, results, configurations)
+        information = {
+            "perf_matrix": self._results,
+            "mask": self._enabled,
+            "features": self._features,
+            "model": model,
+            "challenger_configuration": evaluating,
+            "incumbent_configuration": incumbent
+        }
+     
         
-            self._evaluating_times: np.ndarray = np.array(
-                [
-                    self._results[instance,evaluating]
-                    for instance in self._features.keys() if instance not in self._removed_instances
-                ]
-            )
-            self._last_info = information
-        else:
-            information = self._last_info
+        self._challenger_times: np.ndarray = np.array([self._results[instance, evaluating] if self._evaluation_mask[instance] else 0 
+                                              for instance in range(self.ninstances) ])
+        self._incumbent_times: np.ndarray = np.array([self._results[instance, incumbent] if self._evaluation_mask[instance] else 0 
+                                              for instance in range(self.ninstances) ])
 
-        # we do it now that we have the data
-        if comparing is None:
-            comparing = np.argmin(np.sum(information["perf_matrix"], axis=0))
-
-        self._comparing_times: np.ndarray = np.array(
-            [
-                self._results[instance,comparing]
-                for instance in self._features.keys() if instance not in self._removed_instances
-            ]
-        )
-
-        self._history.append([evaluating, comparing, False])
+        self._history.append([evaluating, incumbent, False])
 
         # Assign data
-        self._done: np.ndarray = np.zeros(self._n_instances, dtype=np.bool_)
-        return self.__state__(), information, information_has_changed
+        self._done: np.ndarray = np.zeros(self.ninstances, dtype=np.bool_)
+        return self.__state__(), information, True
 
-    def set_removed_algorithms(self, removed: List[int]):
+    def set_enabled(self, configuration: int, instance: int, enabled: bool = True):
         """
-        Remove algorithms out of the dataset and act (even after reset) as if they were not in the dataset.
+        Add/Remove a pair (config, instance) of the dataset and act (even after reset) as if they were not in the dataset.
+        Replace config or instance with -1 to act on all pairs for the configuration or the instance. (-1 acts like *)
         Must be done just before a reset to behave corretly.
         """
-        if removed != self._removed_algorithms:
-            self._removed_algorithms = removed
-            self._removed_algorithms_has_changed = True
+        if instance == -1:
+            self._enabled[:, configuration] = enabled
+        elif configuration == -1:
+            self._enabled[instance, :] = enabled
 
-    def set_removed_instances(self, removed: List[int]):
+    def set_instance_count_for_eval(self, instance: int, enabled: bool = True):
         """
-        Remove instances out of the dataset and act (even after reset) as if they were not in the dataset.
+        Add/Remove an instance of the dataset and act (even after reset) as if they were not in the dataset but only relative ot the comparison of two configurations (does not affect given data).
         Must be done just before a reset to behave corretly.
         """
-        if removed != self._removed_algorithms:
-            self._removed_instances = removed
-            self._removed_instances_has_changed = True
+        self._evaluation_mask[instance] = enabled
 
     def choose(self, better: bool):
         """
@@ -233,38 +148,11 @@ class TestEnv:
         -----------
         - better (bool) - indicates whether this algorithm is strictly better or not thant the one it's being compared to
         """
-        self._correct.append(self.is_better == better)
-        self._time_ratio.append(self.current_time / self.current_max_time)
+        self._correct.append(self.is_challenger_better == better)
+        self._time_ratio.append(self.current_time / self.current_challenger_max_total_time)
         self._choices.append(np.sum(self._done))
         self._history[-1][-1] = better
 
-    def reevaluate_with_new_par(self, new_par: float):
-        self.par_penalty = new_par
-        for index, (evaluating, comparing, better) in enumerate(self._history):
-
-            evaluating_times: np.ndarray = np.array(
-                [
-                    self._results[instance,evaluating]
-                    for instance in self._features.keys() if instance not in self._removed_instances
-                ]
-            )
-            comparing_times: np.ndarray = np.array(
-                [
-                    self._results[instance,comparing]
-                    for instance in self._features.keys() if instance not in self._removed_instances
-                ]
-            )
-            penalty_eval: float = np.sum(evaluating_times >= self._cutoff_time) * (
-                self.par_penalty - 1
-            )
-            penalty_comparing: float = np.sum(comparing_times >= self._cutoff_time) * (
-                self.par_penalty - 1
-            )
-            is_better: bool = (
-                np.sum(evaluating_times) + penalty_eval
-                < np.sum(comparing_times) + penalty_comparing
-            )
-            self._correct[index] = better == is_better
 
     def step(self, instance: int) -> Tuple[List[Optional[float]], List[float]]:
         """
@@ -281,33 +169,18 @@ class TestEnv:
         If the algorithm wasn't run on a problem it is replaced by None.
         times_comparing (List[float]) is a list containing the times the algorithm we are comparing against took on the instances.
         """
-        assert not self._done[
-            instance
-        ], f"Instance {instance} was already chosen ! Choose in: {self.legal_moves()}"
+        assert not self._done[instance], f"Instance {instance} was already chosen!"
         self._done[instance] = True
         return self.__state__()
 
     @property
-    def n_algorithms(self) -> int:
-        """
-        Number of algorithms in the current dataset.
-        """
-        return self._n_algorithms - len(self._removed_algorithms)
-
-    @property
-    def is_better(self) -> bool:
+    def is_challenger_better(self) -> bool:
         """
         Return true iff the challenger is better than the incumbent.
         """
-        penalty_eval: float = np.sum(self._evaluating_times >= self._cutoff_time) * (
-            self.par_penalty - 1
-        )
-        penalty_comparing: float = np.sum(
-            self._comparing_times >= self._cutoff_time
-        ) * (self.par_penalty - 1)
         return (
-            np.sum(self._evaluating_times) + penalty_eval
-            < np.sum(self._comparing_times) + penalty_comparing
+            np.sum(self._challenger_times)
+            < np.sum(self._incumbent_times)
         )
 
     @property
@@ -317,8 +190,8 @@ class TestEnv:
         """
         return sum(
             [
-                self._evaluating_times[i]
-                for i in range(self._n_instances)
+                self._challenger_times[i]
+                for i in range(self.ninstances)
                 if self._done[i]
             ]
         )
@@ -331,21 +204,20 @@ class TestEnv:
         return np.sum(self._done)
 
     @property
-    def current_comparing_max_time(self) -> float:
+    def current_incumbent_max_total_time(self) -> float:
         """
         Total time it would take to run the incumbent on all instances.
         """
-        return np.sum(self._comparing_times)
+        return np.sum(self._incumbent_times)
 
     @property
-    def current_max_time(self) -> float:
+    def current_challenger_max_total_time(self) -> float:
         """
         Total time it would take to run the challenger on all instances.
         """
-        return np.sum(self._evaluating_times)
+        return np.sum(self._challenger_times)
 
-    @property
-    def score(self, estimator=np.median) -> float:
+    def score(self, estimator: Callable[[Iterable], float]=np.median) -> float:
         correct = estimator(self._correct)
         time_ratio = estimator(self._time_ratio)
         return (correct - 0.5) * 2 * (1 - time_ratio)
@@ -360,36 +232,17 @@ class TestEnv:
     def runs(
         self,
     ) -> Generator[Tuple[int, int, float, float, bool, bool, float, int], None, None]:
-        for index, (eval, cmp, better) in enumerate(self._history):
-            eval_name: str = self._index2algo[eval]
-            comparing_name: str = self._index2algo[cmp]
+        for index, (challenger, incumbent, better) in enumerate(self._history):
+            challenger_time: float = np.sum([self._results[instance, challenger] if self._evaluation_mask[instance] else 0 
+                                              for instance in range(self.ninstances) ])
+            incumbent_time: float = np.sum([self._results[instance, incumbent] if self._evaluation_mask[instance] else 0 
+                                              for instance in range(self.ninstances) ])
 
-            evaluating_times: np.ndarray = np.array(
-                [
-                    self._results[instance][eval_name]
-                    for instance in self._features.keys()
-                ]
-            )
-            comparing_times: np.ndarray = np.array(
-                [
-                    self._results[instance][comparing_name]
-                    for instance in self._features.keys()
-                ]
-            )
-            penalty_eval: float = np.sum(evaluating_times >= self._cutoff_time) * (
-                self.par_penalty - 1
-            )
-            penalty_comparing: float = np.sum(comparing_times >= self._cutoff_time) * (
-                self.par_penalty - 1
-            )
+            is_better: bool = challenger_time < incumbent_time
 
-            perf_eval: float = np.sum(evaluating_times) + penalty_eval
-            perf_cmp: float = np.sum(comparing_times) + penalty_comparing
-            is_better: bool = perf_eval < perf_cmp
-
-            yield eval, cmp, perf_eval, perf_cmp, is_better, better, self._time_ratio[
+            yield challenger, incumbent, challenger_time, incumbent_time, is_better, better, self._time_ratio[
                 index
             ], self._choices[index]
 
     def get_total_perf_matrix(self) -> np.ndarray:
-        return resultdict2matrix(self._results, None)[0]
+        return self._results

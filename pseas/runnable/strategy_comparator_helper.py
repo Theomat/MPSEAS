@@ -14,15 +14,11 @@ from concurrent.futures.process import ProcessPoolExecutor
 from concurrent.futures import wait, ALL_COMPLETED
 
 
-def __evaluate__(scenario_path: str, distribution: str, strategy: Strategy, 
-                 par_penalty: float,  
-                 algorithm: int,
-                 removed_algorithms: List[int] = [],
-                 verbose: bool = False, **kwargs) -> Tuple[Strategy, TestEnv, Dict]:
-    env: TestEnv = TestEnv(
-        scenario_path, distribution, seed=0, verbose=verbose, par_penalty=par_penalty)
-    env.set_removed_algorithms(removed_algorithms)
-    stats = {
+def __evaluate__(env: TestEnv, strategy: Strategy, incumbent: int, challenger_list: List[int], **kwargs) -> Tuple[Strategy, TestEnv, Dict]:
+    """
+    For one strategy evaluate for all pairs (incumbent, challenger) where challenger is in challenger_list.
+    """
+    stats: Dict[str, List] = {
             "time": [],
             "confidence": [],
             "prediction": [],
@@ -31,7 +27,7 @@ def __evaluate__(scenario_path: str, distribution: str, strategy: Strategy,
             "a_old": [],
             "instances": []
     }
-    real = {
+    real: Dict[str, List] = {
         "prediction": [],
         "time": [],
         "a_old": [],
@@ -39,11 +35,11 @@ def __evaluate__(scenario_path: str, distribution: str, strategy: Strategy,
     }
     to_ratio = lambda x: int(floor(x * 100))
     label: str = strategy.name()
-    for cmp in range(env.n_algorithms):
-        if cmp == algorithm:
+    for challenger in challenger_list:
+        if challenger == incumbent:
             continue
-        state, information, information_has_changed = env.reset((algorithm, cmp))
-        if information_has_changed:
+        state, information, should_call_ready = env.reset((challenger, incumbent))
+        if should_call_ready:
             strategy.ready(**information)
         strategy.reset()
         strategy.feed(state)
@@ -55,16 +51,16 @@ def __evaluate__(scenario_path: str, distribution: str, strategy: Strategy,
             strategy.feed(state)
             instances += 1
             #  Update if time changed enough
-            time_ratio: float = env.current_time / env.current_max_time
+            time_ratio: float = env.current_time / env.current_challenger_max_total_time
             if to_ratio(last_time_ratio) < to_ratio(time_ratio):
                 for i in range(to_ratio(last_time_ratio), to_ratio(time_ratio)):
                         # Update predictions
                         stats["time"].append(i)
                         stats["prediction"].append(
-                            strategy.is_better() == env.is_better)
+                            strategy.is_better() == env.is_challenger_better)
                         stats["strategy"].append(label)
-                        stats["a_new"].append(algorithm)
-                        stats["a_old"].append(cmp)
+                        stats["a_new"].append(challenger)
+                        stats["a_old"].append(incumbent)
                         stats["instances"].append(instances)
 
                         # Update confidence
@@ -79,9 +75,9 @@ def __evaluate__(scenario_path: str, distribution: str, strategy: Strategy,
                 if isinstance(strategy._discrimination, Wilcoxon) and env.current_instances < 5:
                     continue
                 finished = True
-                real["a_old"].append(cmp)
+                real["a_old"].append(incumbent)
                 real["prediction"].append(strategy.is_better())
-                real["time"].append(env.current_time / env.current_max_time)
+                real["time"].append(env.current_time / env.current_challenger_max_total_time)
                 real["instances"].append(env.current_instances)
         env.choose(strategy.is_better())
         # Fill in the rest
@@ -89,11 +85,11 @@ def __evaluate__(scenario_path: str, distribution: str, strategy: Strategy,
                 # Update predictions
                 stats["time"].append(i)
                 stats["strategy"].append(label)
-                stats["a_new"].append(algorithm)
-                stats["a_old"].append(cmp)
+                stats["a_new"].append(challenger)
+                stats["a_old"].append(incumbent)
                 stats["instances"].append(instances)
                 stats["prediction"].append(
-                    strategy.is_better() == env.is_better)
+                    strategy.is_better() == env.is_challenger_better)
                 # Update confidence
                 try:
                     stats["confidence"].append(
@@ -103,50 +99,11 @@ def __evaluate__(scenario_path: str, distribution: str, strategy: Strategy,
    
         if not finished:
             finished = True
-            real["a_old"].append(cmp)
+            real["a_old"].append(incumbent)
             real["prediction"].append(strategy.is_better())
-            real["time"].append(env.current_time / env.current_max_time)
+            real["time"].append(env.current_time / env.current_challenger_max_total_time)
             real["instances"].append(env.current_instances)
     kwargs["stats"] = stats
     kwargs["real"] = real
-    kwargs["a_new"] = algorithm
     return strategy, env, kwargs
 
-
-def compare(scenario_path: str, 
-            strategies: List[Tuple[Union[Strategy, Callable[[None], Strategy]], Dict]],
-            distribution: str,
-            callback: Callable[[Tuple[Strategy, TestEnv, Dict]], None],
-            n_algorithms: int,
-            removed_algorithms: List[int] = [],
-            par_penalty: float = 1,
-            max_workers: Optional[int] = None,
-            close_pool: bool = True,
-            verbose: bool = False) -> Dict[str, Dict[str, float]]:
-    """
-    Compare the different startegies on this dataset.
-    The stats of each strategy is printed on the standard output
-
-    Parameters:
-    -----------
-    - scenario_path (str) - file path of the scenario
-    - strategies (List[Strategy]) - the list of strategies to compare
-    - distribution (str) - the name of the class of the distribution to use to compute the distribution
-    - callback (Callable[[Tuple[Strategy, TestEnv, Dict]], None]) - the function that is called on each set of runs after it is terminated.
-    - n_algorithms (int) - number of algorithms in this dataset
-    - par_penalty (float) - par penalty coefficient. Default: 1.
-    - max_workers (Optional[int]) - the number of workers to use. Default: None.
-    - verbose (bool) - print info to stdout. Default: False.
-    """
-    executor = ProcessPoolExecutor(max_workers)
-    futures = []
-    for algorithm in range(n_algorithms):
-        for strategy, kwargs in strategies:
-            if algorithm in kwargs.get("a_new_done", []):
-                continue
-            future = executor.submit(__evaluate__, scenario_path, distribution, strategy.clone(), par_penalty, algorithm, removed_algorithms, verbose, **kwargs)
-            future.add_done_callback(callback)
-            futures.append(future) 
-
-    if close_pool:
-        wait(futures, return_when=ALL_COMPLETED)

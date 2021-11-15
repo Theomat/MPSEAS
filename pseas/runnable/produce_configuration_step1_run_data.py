@@ -4,30 +4,25 @@ Run this script with -h for the help.
 It produces for each method for a given dataset all the data needed to compare the methods on the specified dataset.
 The strategies being compared are defined after line 88.
 """
-
+from concurrent.futures import wait, ALL_COMPLETED
+from concurrent.futures.process import ProcessPoolExecutor
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
-from pseas.test_env import TestEnv
+from pseas.test_env import ResetChoice, TestEnv
 from pseas.strategy import Strategy
-from pseas.runnable.strategy_comparator_helper import compare
+from pseas.runnable.strategy_comparator_helper import __evaluate__
 from pseas.standard_strategy import StandardStrategy
-from pseas.corrected_timeout_strategy import CorrectedTimeoutStrategy
 from pseas.discrimination.subset_baseline import SubsetBaseline
 from pseas.discrimination.wilcoxon import Wilcoxon
-from pseas.discrimination.distribution_based import DistributionBased
 from pseas.instance_selection.random_baseline import RandomBaseline
 from pseas.instance_selection.discrimination_based import DiscriminationBased
 from pseas.instance_selection.udd import UDD
-from pseas.instance_selection.ranking_based import RankingBased
 from pseas.instance_selection.variance_based import VarianceBased
-from pseas.instance_selection.information_based import InformationBased
-from pseas.instance_selection.distance_based import DistanceBased
-from pseas.instance_selection.feature_based import FeatureBased
 
 # =============================================================================
 # Argument parsing.
@@ -41,7 +36,6 @@ argument_default_values: Dict = {
     "save_every": 5,
     "max_workers": None,
     "scenario_path": './rundata/kissat_ibm',
-    "par": 2,
     "nb_configurations":10,
     "ratio_instances":1,
 }
@@ -69,12 +63,6 @@ argument_parser.add_argument('--scenario-path',
                              default=argument_default_values['scenario_path'],
                              help=" (default: './rundata/kissat_ibm')"
                              )
-argument_parser.add_argument('--par',
-                             type=int,
-                             action='store',
-                             default=argument_default_values['par'],
-                             help=" (default: 1)"
-                             )
 argument_parser.add_argument('--nb-configurations',
                              type=int,
                              action='store',
@@ -94,7 +82,6 @@ parsed_parameters = argument_parser.parse_args()
 save_every: int = parsed_parameters.save_every
 max_workers: int = parsed_parameters.max_workers
 scenario_path: str = parsed_parameters.scenario_path
-par: int = parsed_parameters.par
 nb_configurations: int = parsed_parameters.nb_configurations
 ratio_instances: float = parsed_parameters.ratio_instances
 output_suffix: str = scenario_path.strip('/').split('/')[-1]+'_'+str(nb_configurations)+'_'+str(ratio_instances)
@@ -116,19 +103,14 @@ discriminators = [
 selectors = [
     lambda: RandomBaseline(0),
     lambda: DiscriminationBased(1.2),
-    #lambda: RankingBased(),
     lambda: UDD(alpha=0, beta=0), # Uncertainty sampling
     lambda: UDD(alpha=1, beta=1), # Find optimal alpha, beta?
     lambda: VarianceBased(),
-    lambda: InformationBased(),
-    # lambda: DistanceBased("norm2-based", norm2_distance),
-    #lambda: FeatureBased()
-    # add active learning method
+    # lambda: InformationBased(), #TODO: try adaptation
 ]
 
 strategy_makers = [
     lambda i, d: StandardStrategy(i, d),
-    # lambda i, d: CorrectedTimeoutStrategy(i, d, seed=0)
 ]
 # =============================================================================
 # End Strategy Definition
@@ -152,10 +134,9 @@ df_general = {
     "y_true": [],
     "y_pred": [],
     "time": [],
-    "perf_eval": [],
-    "perf_cmp": [],
+    "perf_challenger": [],
+    "perf_incumbent": [],
     "instances": [],
-    "par": [],
     "strategy": [],
     "a_new": [],
     "a_old": [],
@@ -201,29 +182,17 @@ def callback(future):
     real = dico["real"]
 
     # Fill general dataframe
-    for par in range(1, 11):
-        env.reevaluate_with_new_par(par)
-        for eval, cmp, perf_eval, perf_cmp, y_true, _, _, _ in env.runs():
-            df_general["y_true"].append(y_true)
-            df_general["perf_eval"].append(perf_eval)
-            df_general["perf_cmp"].append(perf_cmp)
-            df_general["par"].append(par)
-            df_general["strategy"].append(strat.name())
-            df_general["a_new"].append(eval)
-            df_general["a_old"].append(cmp)
-            df_general["dataset"].append(dico["dataset"])
-
-            index: int = -1
-            for i, other_cmp in enumerate(real["a_old"]):
-                if other_cmp == cmp:
-                    index = i
-                    break
-            if index < 0:
-                print("Fatal error !")
-            else:
-                df_general["time"].append(real["time"][index])
-                df_general["instances"].append(real["instances"][index])
-                df_general["y_pred"].append(real["prediction"][index])
+    for challenger, incumbent, perf_challenger, perf_incumbent, y_true, _, _, _ in env.runs():
+        df_general["y_true"].append(y_true)
+        df_general["perf_challenger"].append(perf_challenger)
+        df_general["perf_incumbent"].append(perf_incumbent)
+        df_general["strategy"].append(strat.name())
+        df_general["a_new"].append(challenger)
+        df_general["a_old"].append(incumbent)
+        df_general["dataset"].append(dico["dataset"])
+        df_general["time"].append(real["time"][incumbent])
+        df_general["instances"].append(real["instances"][incumbent])
+        df_general["y_pred"].append(real["prediction"][incumbent])
     # Save general dataframe
     if pbar.n % save_every == 0:
         df_tmp = pd.DataFrame(df_general)
@@ -232,37 +201,55 @@ def callback(future):
         df_tmp.to_csv(f"./runs_{output_suffix}.csv")
 
 
-def run(scenario_path, max_workers, par):
+def run(scenario_path, max_workers):
     print()
     env = TestEnv(scenario_path)
-    n_algos = env.n_algorithms
     dataset_name: str = scenario_path[scenario_path.rfind("/")+1:]
+
+    # Select instances
+    ninstances = round(ratio_instances * env.ninstances)
+    selected_instances = env._generator.choice(list(range(env.ninstances)), size=ninstances)
+    for instance in range(env.ninstances):
+        if instance not in selected_instances:
+            env.set_enabled(-1, instance, False)
+            env.set_instance_count_for_eval(instance, False)
+
+    # Subset of configurations
+    challenger_list = env._generator.choice(list(range(env.nconfigurations)), size=nb_configurations)
+    for config in range(env.nconfigurations):
+        if config not in challenger_list:
+            env.set_enabled(config, -1, False)
+
+    # Get incumbent that is the fastest
+    incumbent = env.reset(ResetChoice.RESET_BEST)[1]["incumbent_configuration"]
+
     # Generate strategies
-    total: int = 0
-    strategies: List[Tuple[Strategy, Dict]] = []
+    strategies: List[Strategy] = []
     for discriminator in discriminators:
         for selection in selectors:
             for strategy_make in strategy_makers:
                 strat = strategy_make(selection(), discriminator())
-                dico = {
-                    "a_new_done": [],
-                    "dataset": dataset_name,
-                }
-                total += n_algos
                 if original_df_general is not None:
                     tmp = original_df_general[original_df_general["strategy"] == strat.name(
                     )]
                     tmp = tmp[tmp["dataset"] == dataset_name]
-                    dico["a_new_done"] = np.unique(
-                        tmp["a_new"].values).tolist()
-                    total -= len(dico["a_new_done"])
-                strategies.append([strat, dico])
-    pbar.total += total
-    compare(scenario_path, strategies, "cauchy", callback, n_algorithms=n_algos,
-            verbose=False, par_penalty=par, max_workers=max_workers, close_pool=True)
+                    if tmp.shape[0] > 0:
+                        continue            
+                strategies.append(strat)
+    pbar.total = len(strategies)
+    executor = ProcessPoolExecutor(max_workers)
+    futures = []
+    for strategy in strategies:
+        new_env = TestEnv(scenario_path, False, 0)
+        new_env._enabled = env._enabled
+        new_env._evaluation_mask = env._evaluation_mask
+        future = executor.submit(__evaluate__, env, strategy, incumbent, challenger_list)
+        future.add_done_callback(callback)
+        futures.append(future) 
+    wait(futures, return_when=ALL_COMPLETED)
 
 
-run(scenario_path, max_workers, par)
+run(scenario_path, max_workers)
 # Last save
 df_tmp = pd.DataFrame(df_detailed)
 if original_df_detailed is not None:
