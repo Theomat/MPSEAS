@@ -30,7 +30,7 @@ class TestEnv:
         verbose: bool = True,
         seed: Optional[int] = None
     ) -> None:
-        self._generator = np.random.default_rng(seed)
+        self.rng: np.random.Generator = np.random.default_rng(seed)
 
         data, features, configurations = configuration_extractor.load_configuration_data(
             scenario_path
@@ -94,17 +94,15 @@ class TestEnv:
             # Choose 2 algorithms
             if choice == ResetChoice.RESET_BEST:
                 incumbent = np.argmin(np.sum(self._results[self._enabled], axis=0))
-            evaluating = self._generator.choice([x for x in range(self.nconfigurations) if x != incumbent])
+            evaluating = self.rng.choice([x for x in range(self.nconfigurations) if x != incumbent])
         else:
             incumbent, evaluating = choice
 
-        # TODO: fit model
-        model = fit_rf_model(features_dict, results, configurations)
         information = {
             "perf_matrix": self._results,
             "mask": self._enabled,
             "features": self._features,
-            "model": model,
+            # "model": self._model,
             "challenger_configuration": evaluating,
             "incumbent_configuration": incumbent
         }
@@ -120,6 +118,20 @@ class TestEnv:
         # Assign data
         self._done: np.ndarray = np.zeros(self.ninstances, dtype=np.bool_)
         return self.__state__(), information, True
+
+    def fit_model(self):
+        #TODO: Marie fit the model on the available data
+        # All data is in self._results
+        # And to check if instance, config is available check self._enabled[instance, config]
+        # self._model = XXX
+        pass
+
+    def enable_from_last_run(self):
+        last_challenger = self._history[-1][0]
+        for instance, done in enumerate(self._done):
+            if done:
+                self.set_enabled(last_challenger, instance)
+        #TODO: Marie update model with new data
 
     def set_enabled(self, configuration: int, instance: int, enabled: bool = True):
         """
