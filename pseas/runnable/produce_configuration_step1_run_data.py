@@ -153,6 +153,7 @@ def evaluate(scenario_path: str, strategy: Strategy, known_configs: np.ndarray, 
         "total_time": [],
         "current_challenger": [],
         "errors": [],
+        "discarded": [],
     }
 
     metadata = {
@@ -262,6 +263,7 @@ def run(scenario_path, max_workers):
     env.rng.shuffle(challenger_list)
 
     # Get incumbent that is the fastest
+    env.fit_model()
     incumbent = env.reset(ResetChoice.RESET_BEST)[1]["incumbent_configuration"]
 
     all_seeds = list(range(nb_seeds))
