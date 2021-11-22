@@ -96,12 +96,20 @@ class TestEnv:
         else:
             incumbent, evaluating = choice
 
+        filled_perf = np.copy(self._results)
+        for i in range(self._results.shape[0]):
+            for j in range(self._results.shape[1]):
+                if not self._enabled[i, j]:
+                    filled_perf[i, j] = self._model.predict(j, i)[0]
+
         information = {
             "perf_matrix": self._results,
-            "mask": self._enabled,
+            "perf_mask": self._enabled,
+            "filled_perf": filled_perf,
             "features": self._features,
             "challenger_configuration": evaluating,
-            "incumbent_configuration": incumbent
+            "incumbent_configuration": incumbent,
+            "model": self._model
         }
         self._challenger_times: np.ndarray = np.array([self._results[instance, evaluating] if self._evaluation_mask[instance] else 0
                                                        for instance in range(self.ninstances)])
