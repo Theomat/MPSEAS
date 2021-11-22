@@ -84,7 +84,8 @@ def fit_rf_model(features: np.ndarray, results: np.ndarray, configurations_dict:
     """
     Fit a random forest model on the data contained in results
     """
-    model: rf.Model = rf.create_model()
+    model: rf.Model = rf.create_model(configurations_dict, features)
     data = rf.create_dataset(features, configurations_dict, results)
 
     model.fit(data)
+    return model
