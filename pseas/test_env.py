@@ -118,7 +118,7 @@ class TestEnv:
         # Fit the model on the available data
         # All data is in self._results
         # And to check if instance, config is available check self._enabled[instance, config]
-        masked_array: np.ndarray = self._results
+        masked_array: np.ndarray = np.copy(self._results)
         masked_array[np.logical_not(self._enabled)] = np.nan
         self._model = fit_rf_model(self._features, masked_array, self._configurations)
         #TODO: test
