@@ -36,8 +36,8 @@ argument_default_values: Dict = {
     "save_every": 5,
     "max_workers": None,
     "scenario_path": './rundata/kissat_ibm',
-    "nb_configurations":10,
-    "ratio_instances":1,
+    "nb_configurations": 10,
+    "ratio_instances": 1,
     "nb_seeds": 5
 }
 argument_parser.add_argument('-o', '--output-suffix',
@@ -169,6 +169,7 @@ def evaluate(scenario_path: str, strategy: Strategy, known_configs: np.ndarray, 
     while challenger_list:
         challenger = challenger_list.pop()
         state, information, _ = env.reset((challenger, incumbent))
+        print(type(strategy._instance_selection), flush=True)
         strategy.ready(**information)
         strategy.reset()
         strategy.feed(state)

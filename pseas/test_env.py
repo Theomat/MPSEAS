@@ -4,8 +4,7 @@ from typing import Callable, Dict, Generator, Iterable, List, Optional, Tuple, U
 import numpy as np
 
 import pseas.data.configuration_time_loader as configuration_extractor
-from pseas.data.prior_information import fill_features
-
+from pseas.data.prior_information import fill_features, fit_rf_model
 
 class ResetChoice(Enum):
     """Defines the type of reset for an environement."""
@@ -52,7 +51,7 @@ class TestEnv:
                 self.ninstances,
                 "instances with",
                 self.nconfigurations,
-                "algorithms.",
+                "algorithms."
             )
         # stats
         self._correct: List[bool] = []
@@ -89,7 +88,6 @@ class TestEnv:
         information (Dict) is the data to pass to the ready function to the strategy
         """
 
-        
         if isinstance(choice, ResetChoice):
             # Choose 2 algorithms
             if choice == ResetChoice.RESET_BEST:
@@ -102,16 +100,13 @@ class TestEnv:
             "perf_matrix": self._results,
             "mask": self._enabled,
             "features": self._features,
-            # "model": self._model,
             "challenger_configuration": evaluating,
             "incumbent_configuration": incumbent
         }
-     
-        
-        self._challenger_times: np.ndarray = np.array([self._results[instance, evaluating] if self._evaluation_mask[instance] else 0 
-                                              for instance in range(self.ninstances) ])
-        self._incumbent_times: np.ndarray = np.array([self._results[instance, incumbent] if self._evaluation_mask[instance] else 0 
-                                              for instance in range(self.ninstances) ])
+        self._challenger_times: np.ndarray = np.array([self._results[instance, evaluating] if self._evaluation_mask[instance] else 0
+                                                       for instance in range(self.ninstances)])
+        self._incumbent_times: np.ndarray = np.array([self._results[instance, incumbent] if self._evaluation_mask[instance] else 0
+                                                      for instance in range(self.ninstances)])
 
         self._history.append([evaluating, incumbent, False])
 
@@ -120,18 +115,22 @@ class TestEnv:
         return self.__state__(), information, True
 
     def fit_model(self):
-        #TODO: Marie fit the model on the available data
+        # Fit the model on the available data
         # All data is in self._results
         # And to check if instance, config is available check self._enabled[instance, config]
-        # self._model = XXX
-        pass
+        masked_array: np.ndarray = self._results
+        masked_array[np.logical_not(self._enabled)] = np.nan
+        self._model = fit_rf_model(self._features, masked_array, self._configurations)
+        #TODO: test
 
     def enable_from_last_run(self):
         last_challenger = self._history[-1][0]
         for instance, done in enumerate(self._done):
             if done:
                 self.set_enabled(last_challenger, instance)
-        #TODO: Marie update model with new data
+        #fit the RF completely again
+        self.fit_model()
+        #TODO: see how expensive this is, but partial updates are less accurate
 
     def set_enabled(self, configuration: int, instance: int, enabled: bool = True):
         """

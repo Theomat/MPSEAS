@@ -31,25 +31,26 @@ def create_model(num_trees: int = 10, seed: int = 0) -> Model:
 
     the_forest.options.num_trees = num_trees
     # the forest's parameters
-    the_forest.options.do_bootstrapping = True	# default: false
-    the_forest.options.tree_opts.min_samples_to_split = 3	# 0 means split until pure
-    the_forest.options.tree_opts.min_samples_in_leaf = 3	# 0 means no restriction 
-    the_forest.options.tree_opts.max_depth = 2048			# 0 means no restriction
-    the_forest.options.tree_opts.epsilon_purity = 1e-8	# when checking for purity, the data points can differ by this epsilon
+    the_forest.options.do_bootstrapping = True              # default: false
+    the_forest.options.tree_opts.min_samples_to_split = 3   # 0 means split until pure
+    the_forest.options.tree_opts.min_samples_in_leaf = 3    # 0 means no restriction
+    the_forest.options.tree_opts.max_depth = 2048           # 0 means no restriction
+    the_forest.options.tree_opts.epsilon_purity = 1e-8	    # when checking for purity, the data points can differ by this epsilon
 
 
     return Model(the_forest, rng)
 
-def create_dataset(instance_features: Dict[int, np.ndarray], configurations: Dict[int, np.ndarray], data : np.ndarray) -> pyrfr.regression.default_data_container_with_instances:
+def create_dataset(instance_features: np.ndarray, configurations: Dict[int, np.ndarray], data : np.ndarray) -> pyrfr.regression.default_data_container_with_instances:
     conf_len: int = len(configurations[list(configurations.keys())[0]])
-    feat_len: int = len(instance_features[list(instance_features.keys())[0]])
+    feat_len: int = instance_features.shape[1]
     forest_data : pyrfr.regression.default_data_container_with_instances = pyrfr.regression.default_data_container_with_instances(conf_len, feat_len)
     for c in configurations.keys():
         forest_data.add_configuration(list(configurations[c]))
-    for inst in instance_features.keys():
-        forest_data.add_instance(list(instance_features[inst]))
+    for inst in range(instance_features.shape[0]):
+        forest_data.add_instance(instance_features[inst,:])
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
-            forest_data.add_data_point(j, i, data[i][j])
+            if not data[i,j] == np.nan:
+                forest_data.add_data_point(j, i, data[i,j])
     return forest_data
 

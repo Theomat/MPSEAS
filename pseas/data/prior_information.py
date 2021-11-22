@@ -16,7 +16,7 @@ def fill_features(features: Dict[int, np.ndarray], ninstances: int) -> np.ndarra
     counts: np.ndarray = None
 
     for instance in range(ninstances):
-        if not instance in features:
+        if instance not in features:
             to_fill.append((instance, None))
         else:
             feature = features[instance]
@@ -26,7 +26,6 @@ def fill_features(features: Dict[int, np.ndarray], ninstances: int) -> np.ndarra
             if total_feature is None:
                 total_feature = np.zeros_like(feature)
                 counts = np.zeros_like(total_feature)
-            
             total_feature[mask] += feature[mask]
             counts += mask
             if np.any(missing):
@@ -47,8 +46,6 @@ def fill_features(features: Dict[int, np.ndarray], ninstances: int) -> np.ndarra
 
     return features_array
 
-    
-
 
 def initial_guess(distribution_name: str, data: np.ndarray) -> Dict[str, Any]:
     """
@@ -59,7 +56,7 @@ def initial_guess(distribution_name: str, data: np.ndarray) -> Dict[str, Any]:
     if distribution_name == "cauchy":
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         return {
-            "loc": p50, 
+            "loc": p50,
             "scale": (p75 - p25) / 2
         }
     elif distribution_name == "norm":
@@ -83,12 +80,11 @@ def fit_same_class(distribution_name: str, perf_matrix: np.ndarray) -> np.ndarra
         prior[instance, 1] = scale
     return prior
 
-def fit_rf_model(features_dict: Dict[str, np.ndarray], results: Dict[str, Dict[str, float]], configurations: Dict[str, np.ndarray]) -> rf.Model :
+def fit_rf_model(features: np.ndarray, results: np.ndarray, configurations_dict: Dict[str, np.ndarray]) -> rf.Model:
     """
     Fit a random forest model on the data contained in results
     """
     model: rf.Model = rf.create_model()
-    
-    data = rf.create_dataset(features_dict, configurations, results)
+    data = rf.create_dataset(features, configurations_dict, results)
 
     model.fit(data)
