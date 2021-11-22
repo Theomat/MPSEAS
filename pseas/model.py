@@ -4,26 +4,27 @@ import numpy as np
 
 
 class Model():
-    def __init__(self, forest, rng) -> None:
+    def __init__(self, forest, conf, features, rng) -> None:
         self.forest = forest
         self.rng = rng
+        self.conf = conf
+        self.features = features
 
     def predict(self, configuration, instance) -> Tuple[float, float]:
         """
         Return result and incertitude
         """
-        # TODO
-        feature_vector = configuration + instance
+        feature_vector = self.conf[configuration].tolist() + self.features[instance].tolist()
         return self.forest.predict_mean_var(feature_vector)
 
     def fit(self, data: pyrfr.regression.default_data_container_with_instances):
-        # TODO: CHange to something relevant, this was put just ot have an on zero number (otherwise it crashes)
+        # TODO: Change to something relevant, this was put just ot have an on zero number (otherwise it crashes)
         self.forest.options.num_data_points_per_tree = data.num_data_points() # means same number as data points
 
         self.forest.fit(data, self.rng)
 
 
-def create_model(num_trees: int = 10, seed: int = 0) -> Model:
+def create_model(conf, features, num_trees: int = 10, seed: int = 0) -> Model:
     #reset to reseed the rng for the next fit
     rng = pyrfr.regression.default_random_engine(seed)
     # create an instance of a regerssion forest using binary splits and the RSS loss
@@ -38,7 +39,7 @@ def create_model(num_trees: int = 10, seed: int = 0) -> Model:
     the_forest.options.tree_opts.epsilon_purity = 1e-8	    # when checking for purity, the data points can differ by this epsilon
 
 
-    return Model(the_forest, rng)
+    return Model(the_forest, conf, features, rng)
 
 def create_dataset(instance_features: np.ndarray, configurations: Dict[int, np.ndarray], data : np.ndarray) -> pyrfr.regression.default_data_container_with_instances:
     conf_len: int = len(configurations[list(configurations.keys())[0]])
