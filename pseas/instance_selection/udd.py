@@ -131,8 +131,11 @@ class UDD(InstanceSelection):
 
     def __diversity(self, not_done_instances):
         done_mask = np.array([i not in not_done_instances for i in range(self.n_instances)])
-        diversities = np.min(self._distances[:, done_mask], axis=1)
-        diversities[done_mask] = 0
+        if np.any(done_mask):
+            diversities = np.min(self._distances[:, done_mask], axis=1)
+            diversities[done_mask] = 0
+        else:
+            diversities = np.zeros((len(not_done_instances)))
         return diversities
 
     def feed(self, state: Tuple[List[Optional[float]], List[float]]) -> None:
