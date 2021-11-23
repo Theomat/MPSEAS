@@ -154,8 +154,8 @@ class UDD(InstanceSelection):
             # Normalize values in [0, 1]
             densities -= np.min(densities)
             diversities -= np.min(diversities)
-            densities /= np.max(densities)
-            diversities /= np.max(diversities)
+            densities /= max(1e-3, np.max(densities))
+            diversities /= max(1e-3, np.max(diversities))
             scores = uncertainties + self.alpha * densities - self.beta * diversities
         for i in range(self.n_instances):
             if state[0][i] is not None:
