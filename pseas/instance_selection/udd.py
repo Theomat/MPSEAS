@@ -124,7 +124,7 @@ class UDD(InstanceSelection):
             for neighbour in neighbours:
                 dist: float = self._distances[instance, neighbour]
                 total += dist*dist
-            total /= len(neighbours)
+            total /= max(1, len(neighbours))
             densities[instance] = total
         return densities
 
