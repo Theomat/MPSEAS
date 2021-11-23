@@ -145,7 +145,7 @@ class UDD(InstanceSelection):
         uncertainties = self.__uncertainty(not_done_instances)
         # Normalize values in [0, 1]
         uncertainties -= np.min(uncertainties)
-        uncertainties /= np.max(uncertainties)
+        uncertainties /= max(1e-3, np.max(uncertainties))
         if self.alpha == 0 and self.beta == 0:
             scores = uncertainties
         else:
