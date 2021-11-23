@@ -45,7 +45,7 @@ def create_dataset(instance_features: np.ndarray, configurations: Dict[int, np.n
     conf_len: int = len(configurations[list(configurations.keys())[0]])
     feat_len: int = instance_features.shape[1]
     forest_data : pyrfr.regression.default_data_container_with_instances = pyrfr.regression.default_data_container_with_instances(conf_len, feat_len)
-    for c in configurations.keys():
+    for c in range(data.shape[1]):
         forest_data.add_configuration(list(configurations[c]))
     for inst in range(instance_features.shape[0]):
         forest_data.add_instance(instance_features[inst,:])
