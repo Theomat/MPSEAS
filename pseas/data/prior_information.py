@@ -66,7 +66,7 @@ def initial_guess(distribution_name: str, data: np.ndarray) -> Dict[str, Any]:
         }
     return {}
 
-def fit_same_class(distribution_name: str, perf_matrix: np.ndarray) -> np.ndarray:
+def fit_same_class(distribution_name: str, perf_matrix: np.ndarray, mask: np.ndarray) -> np.ndarray:
     """
     Fit all the data of the perf matrix with instances of the same given distribution.
     """
@@ -74,6 +74,8 @@ def fit_same_class(distribution_name: str, perf_matrix: np.ndarray) -> np.ndarra
     prior: np.ndarray = np.zeros(
         (perf_matrix.shape[0], 2), dtype=np.float64)
     for instance in range(perf_matrix.shape[0]):
+        if mask[instance] <= 0:
+            continue
         data = perf_matrix[instance, :]
         loc, scale = distribution.fit(data, **initial_guess(distribution_name, data))
         prior[instance, 0] = loc
