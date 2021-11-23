@@ -51,7 +51,7 @@ def create_dataset(instance_features: np.ndarray, configurations: Dict[int, np.n
         forest_data.add_instance(instance_features[inst,:])
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
-            if not data[i,j] == np.nan:
+            if not np.isnan(data[i,j]):
                 forest_data.add_data_point(j, i, data[i,j])
     return forest_data
 
