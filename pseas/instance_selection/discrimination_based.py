@@ -17,15 +17,17 @@ class DiscriminationBased(InstanceSelection):
         super().__init__()
         self._rho : float = rho
 
-    def ready(self, distributions: np.ndarray, perf_matrix: np.ndarray, **kwargs) -> None:
-        locs: np.ndarray = distributions[:, 0]
-        self._scores = np.count_nonzero(perf_matrix > np.repeat(self._rho * np.min(perf_matrix, axis=1), perf_matrix.shape[1]).reshape(perf_matrix.shape[0], -1), axis=1).astype(dtype=float)
+    def ready(self, filled_perf: np.ndarray, **kwargs) -> None:
+        locs: np.ndarray = np.mean(filled_perf, axis=1)
+        self._scores = np.count_nonzero(filled_perf > np.repeat(self._rho * np.min(filled_perf, axis=1), filled_perf.shape[1]).reshape(filled_perf.shape[0], -1), axis=1).astype(dtype=float)
         self._scores /= locs
         self._scores += 1e-10
 
     def feed(self, state: Tuple[List[Optional[float]], List[float]]) -> None:
         not_run_mask: np.ndarray = np.array([time is None for time in state[0]])
-        self._next = np.argmax(self._scores * not_run_mask)
+        others = np.ones_like(self._scores) * -100
+        others[not_run_mask] = self._scores[not_run_mask]
+        self._next: int = np.argmax(others)
 
     def choose_instance(self) -> int:
         return self._next
