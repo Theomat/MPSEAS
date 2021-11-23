@@ -54,4 +54,3 @@ def create_dataset(instance_features: np.ndarray, configurations: Dict[int, np.n
             if not np.isnan(data[i,j]):
                 forest_data.add_data_point(j, i, data[i,j])
     return forest_data
-

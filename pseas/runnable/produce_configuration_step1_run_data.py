@@ -170,7 +170,7 @@ def evaluate(scenario_path: str, strategy: Strategy, known_configs: np.ndarray, 
     while challenger_list:
         challenger = challenger_list.pop()
         state, information, _ = env.reset((challenger, incumbent))
-        print(type(strategy._instance_selection), flush=True)
+        #print(type(strategy._instance_selection), flush=True)
         strategy.ready(**information)
         strategy.reset()
         strategy.feed(state)
