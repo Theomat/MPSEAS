@@ -28,9 +28,12 @@ def __compute_distance_matrix__(features: np.ndarray, distance: Callable[[np.nda
     return distance_matrix
 
 
-def __find_weights__(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+def __find_weights__(x: np.ndarray, y: np.ndarray, mask: np.ndarray) -> np.ndarray:
     instances: int = x.shape[0]
     features: int = x.shape[1]
+
+    removed_instances = np.sum(mask <= 0)
+    instances -= removed_instances
 
     qty: int = int(instances * (instances - 1) / 2)
 
@@ -40,7 +43,11 @@ def __find_weights__(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     # Compute dataset
     index: int = 0
     for i in range(instances):
+        if mask[i] <= 0:
+            continue
         for j in range(i + 1, instances):
+            if mask[j] <= 0:
+                continue
             dx[index] = x[i] - x[j]
             dy[index] = y[i] - y[j]
             index += 1
@@ -71,13 +78,14 @@ class UDD(InstanceSelection):
     def _dynamic_distance(self, x1: np.ndarray, x2: np.ndarray) -> float:
         return np.linalg.norm(self._weights * (x1 - x2))
 
-    def ready(self, model, features, challenger_configuration, perf_matrix, **kwargs) -> None:
+    def ready(self, model, features, challenger_configuration, filled_perf, perf_mask, **kwargs) -> None:
         self.model = model
         self.challenger_configuration = challenger_configuration
-        self.n_instances: int = self.features.shape[0]
+        mask = np.sum(perf_mask, axis=1)
+        self.n_instances: int = features.shape[0]
         # Find optimal distance function
-        y: np.ndarray = np.median(perf_matrix, axis=1)
-        self._weights: np.ndarray = __find_weights__(features, y)
+        y: np.ndarray = np.median(filled_perf, axis=1)
+        self._weights: np.ndarray = __find_weights__(features, y, mask)
         self._distances = __compute_distance_matrix__(features, self._dynamic_distance)
 
     def reset(self) -> None:
