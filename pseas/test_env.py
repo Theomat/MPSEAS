@@ -91,7 +91,13 @@ class TestEnv:
         if isinstance(choice, ResetChoice):
             # Choose 2 algorithms
             if choice == ResetChoice.RESET_BEST:
-                incumbent = np.argmin(np.sum(self._results[self._enabled], axis=0))
+                incumbent = 0
+                best_time = np.sum(self._results[self._enabled[:, 0], 0]) if np.any(self._enabled[:, 0] > 0) else float("inf")
+                for conf in range(1, self.nconfigurations):
+                    time = np.sum(self._results[self._enabled[:, conf], conf]) if np.any(self._enabled[:, conf] > 0) else float("inf")
+                    if not np.isinf(time) and time < best_time:
+                        best_time = time
+                        incumbent = conf
             evaluating = self.rng.choice([x for x in range(self.nconfigurations) if x != incumbent])
         else:
             incumbent, evaluating = choice
