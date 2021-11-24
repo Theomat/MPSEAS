@@ -207,7 +207,6 @@ def evaluate(scenario_path: str, strategy: Strategy, known_configs: np.ndarray, 
 
 
 
-pbar = tqdm(total=0)
 
 df: Dict = {
     "time_used": [],
@@ -219,7 +218,6 @@ df: Dict = {
     "seed": [],
     "strategy": []
 }
-
 
 def callback(future):
     pbar.update(1)
@@ -283,7 +281,8 @@ def run(scenario_path, max_workers):
                 else:
                     total += nb_seeds
                     strategies.append((strat, all_seeds))
-    pbar.total = total
+    global pbar
+    pbar = tqdm(total=total)
     futures = []
     executor = ProcessPoolExecutor(max_workers)
     for strategy, seeds in strategies:
