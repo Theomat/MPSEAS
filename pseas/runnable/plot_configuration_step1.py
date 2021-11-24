@@ -86,6 +86,7 @@ matplotlib.rcParams['font.family'] = 'STIXGeneral'
 def __preprocess__(df):
     df["selection"] = df["strategy"].str.extract(r'^([^+]*) \+ .*')
     df["discrimination"] = df["strategy"].str.extract(r'^[^+]* \+ (.*)')
+    df["discrimination"] = df["discrimination"].str.replace(" 10100%", "")
     return df
 
 dataframes = [(a, b, __preprocess__(df)) for (a,b ,df) in dataframes]
