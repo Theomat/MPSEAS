@@ -98,6 +98,7 @@ dataframes = [(a, b, __preprocess__(df)) for (a,b ,df) in dataframes]
 for (nb_conf, ratio, df) in dataframes:
     df["time_ratio"] = df["time_used"]  * 100/ df["total_time"]
     df: pd.DataFrame = df[["selection", "discrimination", "seed", "time_ratio", "discarded"]]
+    df = df.groupby(["selection", "discrimination", "seed"]).max().reset_index()
     df = df.groupby(["selection", "discrimination"]).mean().reset_index()
 
     markers = ["X", "d", "."][:len(np.unique(df["discrimination"]))]
@@ -115,6 +116,7 @@ for (nb_conf, ratio, df) in dataframes:
     df["time_ratio"] = df["time_used"]  * 100/ df["total_time"]
     df["error_rate"] = df["errors"]  * 100/ df["discarded"]
     df: pd.DataFrame = df[["selection", "discrimination", "seed", "time_ratio", "error_rate"]]
+    df = df.groupby(["selection", "discrimination", "seed"]).max().reset_index()
     df = df.groupby(["selection", "discrimination"]).mean().reset_index()
     markers = ["X", "d", "."][:len(np.unique(df["discrimination"]))]
 
