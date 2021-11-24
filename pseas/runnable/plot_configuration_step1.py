@@ -113,15 +113,16 @@ for (nb_conf, ratio, df) in dataframes:
 
 for (nb_conf, ratio, df) in dataframes:
     df["time_ratio"] = df["time_used"]  * 100/ df["total_time"]
-    df: pd.DataFrame = df[["selection", "discrimination", "seed", "time_ratio", "errors"]]
+    df["error_rate"] = df["errors"]  * 100/ df["discarded"]
+    df: pd.DataFrame = df[["selection", "discrimination", "seed", "time_ratio", "error_rate"]]
     df = df.groupby(["selection", "discrimination"]).mean().reset_index()
     markers = ["X", "d", "."][:len(np.unique(df["discrimination"]))]
 
-    g = sns.relplot(x="time_ratio", y="errors",
+    g = sns.relplot(x="time_ratio", y="error_rate",
                     hue="selection", style="discrimination", data=df, s=marker_size, legend=legend,
                     markers=markers, linewidth=1)
     plt.xlabel("% of time", fontsize=axis_font_size)
-    plt.ylabel("Number of prediction errors", fontsize=axis_font_size)
+    plt.ylabel("% of errors", fontsize=axis_font_size)
     plt.xlim(0, 100)
-    plt.ylim(bottom=0)
+    plt.ylim(0, 100)
     plt.show()
