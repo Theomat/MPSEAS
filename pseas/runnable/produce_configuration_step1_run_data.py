@@ -220,7 +220,8 @@ df: Dict = {
     "discarded": [],
     "incumbent": [],
     "seed": [],
-    "strategy": []
+    "strategy": [],
+    "total_challengers": []
 }
 
 def callback(future):
@@ -244,7 +245,6 @@ def callback(future):
 
 
 def run(scenario_path, max_workers):
-    print()
     env = TestEnv(scenario_path)
 
     # Select instances
