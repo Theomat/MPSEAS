@@ -3,6 +3,7 @@ import seaborn as sns
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 
 import glob
 
@@ -99,9 +100,11 @@ for (nb_conf, ratio, df) in dataframes:
     df: pd.DataFrame = df[["selection", "discrimination", "seed", "time_ratio", "discarded"]]
     df = df.groupby(["selection", "discrimination"]).mean().reset_index()
 
+    markers = ["X", "d", "."][:len(np.unique(df["discrimination"]))]
+
     g = sns.relplot(x="time_ratio", y="discarded",
                     hue="selection", style="discrimination", data=df, s=marker_size, legend=legend,
-                    markers=["X", "d"], linewidth=1)
+                    markers=markers, linewidth=1)
     plt.xlabel("% of time", fontsize=axis_font_size)
     plt.ylabel("Number of challengers discarded", fontsize=axis_font_size)
     plt.xlim(0, 100)
@@ -112,10 +115,11 @@ for (nb_conf, ratio, df) in dataframes:
     df["time_ratio"] = df["time_used"]  * 100/ df["total_time"]
     df: pd.DataFrame = df[["selection", "discrimination", "seed", "time_ratio", "errors"]]
     df = df.groupby(["selection", "discrimination"]).mean().reset_index()
+    markers = ["X", "d", "."][:len(np.unique(df["discrimination"]))]
 
     g = sns.relplot(x="time_ratio", y="errors",
                     hue="selection", style="discrimination", data=df, s=marker_size, legend=legend,
-                    markers=["X", "d"], linewidth=1)
+                    markers=markers, linewidth=1)
     plt.xlabel("% of time", fontsize=axis_font_size)
     plt.ylabel("Number of prediction errors", fontsize=axis_font_size)
     plt.xlim(0, 100)
