@@ -83,6 +83,7 @@ matplotlib.rcParams['font.family'] = 'STIXGeneral'
 #     "incumbent"
 #     "seed"
 #     "strategy"
+#     "total_challengers"
 # ==================================================================
 def __preprocess__(df):
     df["selection"] = df["strategy"].str.extract(r'^([^+]*) \+ .*')
@@ -114,7 +115,7 @@ for (nb_conf, ratio, df) in dataframes:
 
 for (nb_conf, ratio, df) in dataframes:
     df["time_ratio"] = df["time_used"]  * 100/ df["total_time"]
-    df["error_rate"] = df["errors"]  * 100/ df["discarded"]
+    df["error_rate"] = df["errors"]  * 100/ df["total_challengers"]
     df: pd.DataFrame = df[["selection", "discrimination", "seed", "time_ratio", "error_rate"]]
     df = df.groupby(["selection", "discrimination", "seed"]).max().reset_index()
     df = df.groupby(["selection", "discrimination"]).mean().reset_index()
