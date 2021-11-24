@@ -154,6 +154,7 @@ def evaluate(scenario_path: str, strategy: Strategy, known_configs: np.ndarray, 
         "current_challenger": [],
         "errors": [],
         "discarded": [],
+        "total_challengers": []
     }
 
     metadata = {
@@ -166,8 +167,10 @@ def evaluate(scenario_path: str, strategy: Strategy, known_configs: np.ndarray, 
     max_time_used: float = 0
     errors: int = 0
     discarded: int = 0
+    challengers_total = 0
 
     while challenger_list:
+        challengers_total += 1
         challenger = challenger_list.pop()
         state, information, _ = env.reset((incumbent, challenger))
         #print(type(strategy._instance_selection), flush=True)
@@ -188,6 +191,7 @@ def evaluate(scenario_path: str, strategy: Strategy, known_configs: np.ndarray, 
             data["total_time"].append(max_time_used)
             data["errors"].append(errors)
             data["discarded"].append(discarded)
+            data["total_challengers"].append(challengers_total)
 
             # If we predict our new configuration is not better with enough confidence we discard it
             if not strategy.is_better() and strategy.get_current_choice_confidence() >= target_confidence:
