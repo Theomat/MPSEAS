@@ -255,12 +255,9 @@ def run(scenario_path, max_workers):
 
     # Subset of configurations
     known_configurations = env.rng.choice(list(range(env.nconfigurations)), size=nb_configurations)
-    challenger_list = []
     for config in range(env.nconfigurations):
         if config not in known_configurations:
-            challenger_list.append(config)
             env.set_enabled(config, -1, False)
-    env.rng.shuffle(challenger_list)
 
     # Get incumbent that is the fastest
     env.fit_model()
