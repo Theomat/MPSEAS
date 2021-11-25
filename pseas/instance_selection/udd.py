@@ -85,7 +85,7 @@ class UDD(InstanceSelection):
         self.n_instances: int = features.shape[0]
         # Find optimal distance function
         y = np.zeros((filled_perf.shape[0]))
-        for instance in range(self._scores.shape[0]):
+        for instance in range(y.shape[0]):
             if np.any(perf_mask[instance]):
                 times = filled_perf[instance, perf_mask[instance]]
                 y[instance] = np.median(times)
