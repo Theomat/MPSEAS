@@ -84,7 +84,11 @@ class UDD(InstanceSelection):
         mask = np.sum(perf_mask, axis=1)
         self.n_instances: int = features.shape[0]
         # Find optimal distance function
-        y: np.ndarray = np.median(filled_perf, axis=1)
+        y = np.zeros((filled_perf.shape[0]))
+        for instance in range(self._scores.shape[0]):
+            if np.any(perf_mask[instance]):
+                times = filled_perf[instance, perf_mask[instance]]
+                y[instance] = np.median(times)
         self._weights: np.ndarray = __find_weights__(features, y, mask)
         self._distances = __compute_distance_matrix__(features, self._dynamic_distance)
 
