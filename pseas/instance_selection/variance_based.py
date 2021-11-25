@@ -9,10 +9,15 @@ class VarianceBased(InstanceSelection):
     Variance based selection method.
     """
 
-    def ready(self, filled_perf: np.ndarray, **kwargs) -> None:
-        locs = np.median(filled_perf, axis=1)
-        scales = np.std(filled_perf, axis=1)
-        self._scores: np.ndarray = scales / np.maximum(locs, 1)
+    def ready(self, filled_perf: np.ndarray, perf_mask: np.ndarray, **kwargs) -> None:
+
+        self._scores = np.zeros((filled_perf.shape[0]))
+        for instance in range(self._scores.shape[0]):
+            if np.any(perf_mask[instance]):
+                times = filled_perf[instance, perf_mask[instance]]
+                self._scores[instance] = np.std(times) / np.median(times)
+            else:
+                self._scores[instance] = -1
 
     def feed(self, state: Tuple[List[Optional[float]], List[float]]) -> None:
         not_run_mask: np.ndarray = np.array([time is None for time in state[0]])

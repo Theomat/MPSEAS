@@ -17,11 +17,15 @@ class DiscriminationBased(InstanceSelection):
         super().__init__()
         self._rho : float = rho
 
-    def ready(self, filled_perf: np.ndarray, **kwargs) -> None:
-        locs: np.ndarray = np.mean(filled_perf, axis=1)
-        self._scores = np.count_nonzero(filled_perf > np.repeat(self._rho * np.min(filled_perf, axis=1), filled_perf.shape[1]).reshape(filled_perf.shape[0], -1), axis=1).astype(dtype=float)
-        self._scores /= locs
-        self._scores += 1e-10
+    def ready(self, filled_perf: np.ndarray, perf_mask: np.ndarray, **kwargs) -> None:
+        self._scores = np.zeros((filled_perf.shape[0]))
+        for instance in range(self._scores.shape[0]):
+            if np.any(perf_mask[instance]):
+                times = filled_perf[instance, perf_mask[instance]]
+                loc = np.median(times)
+                self._scores[instance] = np.count_nonzero(times > np.repeat(self._rho * np.min(times), times.shape[0])).astype(dtype=float) / loc
+            else:
+                self._scores[instance] = -1
 
     def feed(self, state: Tuple[List[Optional[float]], List[float]]) -> None:
         not_run_mask: np.ndarray = np.array([time is None for time in state[0]])
