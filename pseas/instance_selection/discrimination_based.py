@@ -23,7 +23,7 @@ class DiscriminationBased(InstanceSelection):
             if np.any(perf_mask[instance]):
                 times = filled_perf[instance, perf_mask[instance]]
                 loc = np.median(times)
-                self._scores[instance] = np.count_nonzero(times > np.repeat(self._rho * np.min(times), times.shape[0])).astype(dtype=float) / loc
+                self._scores[instance] = np.count_nonzero(times > np.repeat(self._rho * np.min(times), times.shape[0])) / loc
             else:
                 self._scores[instance] = -1
 
