@@ -129,3 +129,20 @@ for (nb_conf, ratio, df) in dataframes:
     plt.xlim(0, 100)
     plt.ylim(0, 100)
     plt.show()
+
+for (nb_conf, ratio, df) in dataframes:
+    df["time_ratio"] = df["time_used"]  * 100/ df["total_time"]
+    df["correct_discard"] = (df["discarded"] - df["errors"])  * 100/ df["total_challengers"]
+    df: pd.DataFrame = df[["selection", "discrimination", "seed", "time_ratio", "correct_discard"]]
+    df = df.groupby(["selection", "discrimination", "seed"]).max().reset_index()
+    df = df.groupby(["selection", "discrimination"]).mean().reset_index()
+    markers = ["X", "d", "."][:len(np.unique(df["discrimination"]))]
+
+    g = sns.relplot(x="time_ratio", y="correct_discard",
+                    hue="selection", style="discrimination", data=df, s=marker_size, legend=legend,
+                    markers=markers, linewidth=1)
+    plt.xlabel("% of time", fontsize=axis_font_size)
+    plt.ylabel("% of correct discard", fontsize=axis_font_size)
+    plt.xlim(0, 100)
+    # plt.ylim(0, 100)
+    plt.show()
