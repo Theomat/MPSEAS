@@ -127,7 +127,7 @@ strategy_makers = [
 # Check if file already exists
 original_df_general: Optional[pd.DataFrame] = None
 original_df_detailed: Optional[pd.DataFrame] = None
-if os.path.exists(f"./runs{output_suffix}.csv"):
+if os.path.exists(f"./runs_{output_suffix}.csv"):
     original_df_general = pd.read_csv(f"./runs_{output_suffix}.csv")
     original_df_general = original_df_general.drop("Unnamed: 0", axis=1)
 
