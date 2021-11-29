@@ -77,7 +77,7 @@ argument_parser.add_argument('--nb-seeds',
                              help=" (default: 5)"
                              )
 argument_parser.add_argument('--ratio-instances',
-                             type=int,
+                             type=float,
                              action='store',
                              default=argument_default_values['ratio_instances'],
                              help=" (default: 1)"
