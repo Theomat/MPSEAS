@@ -217,8 +217,11 @@ def plot_general_performance(df):
     for px, py in zip(x, y):
         print(f"\tTime:{px:.4f}% Correct:{py:.2f}%")
 
+    df = df.reset_index()
+    markers = ["X", "d", "."][:np.unique(df["discrimination"].values).shape[0]]
+
     g = sns.relplot(x="time", y="correct", hue="selection", style="discrimination", data=df, s=marker_size, legend=legend,
-                    markers=["X", "d", "."], linewidth=1)
+                    markers=markers, linewidth=1)
     plt.plot(x, y, 'k--', label="Pareto front")
     plt.xlim(0, 100)
     plt.ylim(general_perf_min_accuracy, 101)
