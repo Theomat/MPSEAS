@@ -167,7 +167,7 @@ df_detailed = {
 def callback(future):
     pbar.update(1)
 
-    strat, runs, dico = future.result()
+    strat_name, runs, dico = future.result()
     # Fill detailed dataframe
     stats = dico["stats"]
     for k, v in stats.items():
@@ -192,7 +192,7 @@ def callback(future):
         df_general["y_true"].append(y_true)
         df_general["perf_eval"].append(perf_chall)
         df_general["perf_cmp"].append(perf_inc)
-        df_general["strategy"].append(strat.name())
+        df_general["strategy"].append(strat_name)
         df_general["a_new"].append(challenger)
         df_general["a_old"].append(incumbent)
         index = challengers.index(challenger)
@@ -209,7 +209,7 @@ def callback(future):
 
 
 def evaluate(scenario_path: str, strategy: Strategy, seed: int,
-                 verbose: bool = False, **kwargs) -> Tuple[Strategy, List[Tuple[int, int, float, float, bool, bool, float, int]], Dict]:
+                 verbose: bool = False, **kwargs) -> Tuple[str, List[Tuple[int, int, float, float, bool, bool, float, int]], Dict]:
     env: TestEnv = TestEnv(scenario_path, verbose, seed=seed)
 
 
@@ -324,7 +324,7 @@ def evaluate(scenario_path: str, strategy: Strategy, seed: int,
     kwargs["stats"] = stats
     kwargs["real"] = real
     kwargs["a_old"] = incumbent
-    return strategy, list(env.runs()), kwargs
+    return strategy.name(), list(env.runs()), kwargs
 
 def run(scenario_path, max_workers):
     print()
