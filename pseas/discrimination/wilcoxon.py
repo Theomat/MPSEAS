@@ -46,9 +46,7 @@ class Wilcoxon(Discrimination):
         if len(instances_done) == len(state[0]):
             self._is_done = True
             return
-        
-        if len(instances_done) < 5:
-            return
+
 
         x1: List[float] = [state[0][i] for i in instances_done]
         x2: List[float] = [state[1][i] for i in instances_done]

@@ -15,14 +15,14 @@ from tqdm import tqdm
 
 from pseas.test_env import ResetChoice, TestEnv
 from pseas.strategy import Strategy
-from pseas.runnable.strategy_comparator_helper import __evaluate__
 from pseas.standard_strategy import StandardStrategy
 from pseas.discrimination.subset_baseline import SubsetBaseline
 from pseas.discrimination.wilcoxon import Wilcoxon
 from pseas.instance_selection.random_baseline import RandomBaseline
 from pseas.instance_selection.discrimination_based import DiscriminationBased
-from pseas.instance_selection.udd import UDD
 from pseas.instance_selection.variance_based import VarianceBased
+from pseas.instance_selection.information_based import InformationBased
+from pseas.instance_selection.udd import UDD
 
 # =============================================================================
 # Argument parsing.
@@ -96,6 +96,7 @@ output_suffix: str = scenario_path.strip('/').split('/')[-1]+'_'+str(nb_configur
 # Finished parsing
 # =============================================================================
 
+
 # =============================================================================
 # Start Strategy Definition
 # =============================================================================
@@ -124,128 +125,93 @@ strategy_makers = [
 # =============================================================================
 
 # Check if file already exists
-original_df: Optional[pd.DataFrame] = None
+original_df_general: Optional[pd.DataFrame] = None
+original_df_detailed: Optional[pd.DataFrame] = None
 if os.path.exists(f"./runs{output_suffix}.csv"):
-    original_df = pd.read_csv(f"./runs_{output_suffix}.csv")
-    original_df = original_df.drop("Unnamed: 0", axis=1)
+    original_df_general = pd.read_csv(f"./runs_{output_suffix}.csv")
+    original_df_general = original_df_general.drop("Unnamed: 0", axis=1)
+
+    original_df_detailed = pd.read_csv(
+        f"./detailed_runs_{output_suffix}.csv")
+    original_df_detailed = original_df_detailed.drop(
+        "Unnamed: 0", axis=1)
     print("Found existing data, continuing acquisition from save.")
 
 
-def evaluate(scenario_path: str, strategy: Strategy, known_configs: np.ndarray, incumbent: int, instances: np.ndarray, seed: int = 0, target_confidence = .95) -> Tuple[Dict, Dict]:
-    env = TestEnv(scenario_path, False, seed)
-
-    challenger_list: List[int] = []
-    for config in range(env.nconfigurations):
-        if config not in known_configs:
-            challenger_list.append(config)
-            env.set_enabled(config, -1, False)
-    
-    for instance in range(env.ninstances):
-        if instance not in instances:
-            env.set_enabled(-1, instance, False)
-            env.set_instance_count_for_eval(instance, False)
-
-    env.rng.shuffle(challenger_list)
-    env.fit_model()
-
-    data: Dict[str, List] = {
-        "time_used": [],
-        "total_time": [],
-        "current_challenger": [],
-        "errors": [],
-        "discarded": [],
-        "total_challengers": []
-    }
-
-    metadata = {
-        "incumbent": incumbent,
-        "seed": seed,
-        "strategy": strategy.name()
-    }
-
-    time_used: float = 0
-    max_time_used: float = 0
-    errors: int = 0
-    discarded: int = 0
-    challengers_total = 0
-
-    while challenger_list:
-        challengers_total += 1
-        challenger = challenger_list.pop()
-        state, information, _ = env.reset((incumbent, challenger))
-        #print(type(strategy._instance_selection), flush=True)
-        strategy.ready(**information)
-        strategy.reset()
-        strategy.feed(state)
-        instances_done = 0
-
-        max_time_used += env.current_challenger_max_total_time
-
-        while instances_done < len(instances):
-            state = env.step(strategy.choose_instance())
-            strategy.feed(state)
-            instances_done += 1
-            # Add data            
-            data["current_challenger"].append(challenger)
-            data["time_used"].append(time_used + env.current_time)
-            data["total_time"].append(max_time_used)
-            data["errors"].append(errors)
-            data["discarded"].append(discarded)
-            data["total_challengers"].append(challengers_total)
-
-            # If we predict our new configuration is not better with enough confidence we discard it
-            if not strategy.is_better() and strategy.get_current_choice_confidence() >= target_confidence:
-                discarded += 1
-                break 
-
-        env.choose(strategy.is_better())
-        if env.is_challenger_better != strategy.is_better():
-            errors += 1
-        if strategy.is_better():
-            break
-        env.enable_from_last_run()
-        time_used += env.current_time
-    return metadata, data 
-
-
-
-
-
-
-df: Dict = {
-    "time_used": [],
-    "total_time": [],
-    "current_challenger": [],
-    "errors": [],
-    "discarded": [],
-    "incumbent": [],
-    "seed": [],
+df_general = {
+    "y_true": [],
+    "y_pred": [],
+    "time": [],
+    "perf_eval": [],
+    "perf_cmp": [],
+    "instances": [],
     "strategy": [],
-    "total_challengers": []
+    "a_new": [],
+    "a_old": [],
+    "seed": []
 }
+
+
+df_detailed = {
+    "strategy": [],
+    "confidence": [],
+    "time": [],
+    "instances": [],
+    "prediction": [],
+    "a_new": [],
+    "a_old": [],
+    "seed": []
+}
+
 
 def callback(future):
     pbar.update(1)
 
-    metadata, data = future.result()
-    n = len(data["time_used"])
-    for key, val in metadata.items():
-        data[key] = [val] * n
+    strat, runs, dico = future.result()
+    # Fill detailed dataframe
+    stats = dico["stats"]
+    for k, v in stats.items():
+        for el in v:
+            df_detailed[k].append(el)
 
-    # Append to dataframe
-    for key, val in data.items():
-        df[key] += val
+    # Save detailed dataframe
+    if pbar.n % save_every == 0:
+        df_tmp = pd.DataFrame(df_detailed)
+        if original_df_detailed is not None:
+            df_tmp = original_df_detailed.append(df_tmp)
+        df_tmp.to_csv(f"./detailed_runs_{output_suffix}.csv")
 
+    # real data
+    real = dico["real"]
+    challengers: List[int] = real["challenger"]
+
+    seed = stats["seed"][-1]
+
+    # Fill general dataframe
+    for challenger, incumbent, perf_chall, perf_inc, y_true, _, _, _ in runs:
+        df_general["y_true"].append(y_true)
+        df_general["perf_eval"].append(perf_chall)
+        df_general["perf_cmp"].append(perf_inc)
+        df_general["strategy"].append(strat.name())
+        df_general["a_new"].append(challenger)
+        df_general["a_old"].append(incumbent)
+        index = challengers.index(challenger)
+        df_general["time"].append(real["time"][index])
+        df_general["instances"].append(real["instances"][index])
+        df_general["y_pred"].append(real["prediction"][index])
+        df_general["seed"].append(seed)
     # Save general dataframe
     if pbar.n % save_every == 0:
-        df_tmp = pd.DataFrame(df)
-        if original_df is not None:
-            df_tmp = original_df.append(df_tmp)
+        df_tmp = pd.DataFrame(df_general)
+        if original_df_general is not None:
+            df_tmp = original_df_general.append(df_tmp)
         df_tmp.to_csv(f"./runs_{output_suffix}.csv")
 
 
-def run(scenario_path, max_workers):
-    env = TestEnv(scenario_path)
+def evaluate(scenario_path: str, strategy: Strategy, seed: int,
+                 verbose: bool = False, **kwargs) -> Tuple[Strategy, List[Tuple[int, int, float, float, bool, bool, float, int]], Dict]:
+    env: TestEnv = TestEnv(scenario_path, verbose, seed=seed)
+
 
     # Select instances
     ninstances = round(ratio_instances * env.ninstances)
@@ -257,49 +223,153 @@ def run(scenario_path, max_workers):
 
     # Subset of configurations
     known_configurations = env.rng.choice(list(range(env.nconfigurations)), size=nb_configurations)
+    challenger_list: List[int] = []
     for config in range(env.nconfigurations):
         if config not in known_configurations:
             env.set_enabled(config, -1, False)
+            challenger_list.append(config)
 
     # Get incumbent that is the fastest
     env.fit_model()
-    incumbent = env.reset(ResetChoice.RESET_BEST)[1]["incumbent_configuration"]
+    incumbent: int = env.reset(ResetChoice.RESET_BEST)[1]["incumbent_configuration"]
+    env._history.clear()
 
-    all_seeds = list(range(nb_seeds))
+    stats = {
+            "time": [],
+            "confidence": [],
+            "prediction": [],
+            "strategy": [],
+            "a_new": [],
+            "a_old": [],
+            "instances": [],
+            "seed": []
+    }
+    real = {
+        "prediction": [],
+        "time": [],
+        "challenger": [],
+        "instances": [],
+    }
+    to_ratio = lambda x: int(np.floor(x * 100))
+    label: str = strategy.name()
+    for challenger in challenger_list:
+        state, information, information_has_changed = env.reset((incumbent, challenger))
+        if information_has_changed:
+            strategy.ready(**information)
+        strategy.reset()
+        strategy.feed(state)
+        last_time_ratio: float = 0
+        instances : int = 0
+        finished: bool = False
+        while instances < env.ninstances:
+            state = env.step(strategy.choose_instance())
+            strategy.feed(state)
+            instances += 1
+            #  Update if time changed enough
+            time_ratio: float = env.current_time / env.current_challenger_max_total_time
+            if to_ratio(last_time_ratio) < to_ratio(time_ratio):
+                for i in range(to_ratio(last_time_ratio), to_ratio(time_ratio)):
+                        # Update predictions
+                        stats["time"].append(i)
+                        stats["prediction"].append(
+                            strategy.is_better() == env.is_challenger_better)
+                        stats["strategy"].append(label)
+                        stats["a_new"].append(challenger)
+                        stats["a_old"].append(incumbent)
+                        stats["instances"].append(instances)
+                        stats["seed"].append(seed)
 
+                        # Update confidence
+                        try:
+                            stats["confidence"].append(
+                                strategy.get_current_choice_confidence() * 100)
+                        except AttributeError:
+                            stats["confidence"].append(100)
+                last_time_ratio = time_ratio
+
+            if not finished and strategy.get_current_choice_confidence() >= .95:
+                if isinstance(strategy._discrimination, Wilcoxon) and env.current_instances < 5:
+                    continue
+                finished = True
+                real["challenger"].append(challenger)
+                real["prediction"].append(strategy.is_better())
+                real["time"].append(env.current_time / env.current_challenger_max_total_time)
+                real["instances"].append(env.current_instances)
+        env.choose(strategy.is_better())
+        # Fill in the rest
+        for i in range(to_ratio(last_time_ratio), 101):
+                # Update predictions
+                stats["time"].append(i)
+                stats["strategy"].append(label)
+                stats["a_new"].append(challenger)
+                stats["a_old"].append(incumbent)
+                stats["instances"].append(instances)
+                stats["prediction"].append(
+                    strategy.is_better() == env.is_challenger_better)
+                stats["seed"].append(seed)
+
+                # Update confidence
+                try:
+                    stats["confidence"].append(
+                        strategy.get_current_choice_confidence() * 100)
+                except AttributeError:
+                    stats["confidence"].append(100)
+   
+        if not finished:
+            finished = True
+            real["challenger"].append(challenger)
+            real["prediction"].append(strategy.is_better())
+            real["time"].append(env.current_time / env.current_challenger_max_total_time)
+            real["instances"].append(env.current_instances)
+    kwargs["stats"] = stats
+    kwargs["real"] = real
+    kwargs["a_old"] = incumbent
+    return strategy, list(env.runs()), kwargs
+
+def run(scenario_path, max_workers):
+    print()
+    env = TestEnv(scenario_path)
+    
+    n_algos = env.nconfigurations
     # Generate strategies
     total: int = 0
-    strategies: List[Tuple[Strategy, List[int]]] = []
+    strategies: List[Tuple[Strategy, Dict]] = []
     for discriminator in discriminators:
         for selection in selectors:
             for strategy_make in strategy_makers:
                 strat = strategy_make(selection(), discriminator())
-                if original_df is not None:
-                    tmp = original_df[original_df["strategy"] == strat.name(
+                seeds_done = []
+                total += n_algos
+                if original_df_general is not None:
+                    tmp = original_df_general[original_df_general["strategy"] == strat.name(
                     )]
-                    seeds_done = list(tmp["seed"].unique())
-                    if len(seeds_done) == 0:
-                        continue           
-                    total += nb_seeds - len(seeds_done)
-                    strategies.append((strat, [x for x in all_seeds if x not in seeds_done]))
-                else:
-                    total += nb_seeds
-                    strategies.append((strat, all_seeds))
-    global pbar
+                    seeds_done = np.unique(
+                        tmp["seed"].values).tolist()
+                    total -= len(seeds_done)
+                strategies.append([strat, seeds_done])
+
+    global pbar 
     pbar = tqdm(total=total)
     futures = []
     executor = ProcessPoolExecutor(max_workers)
-    for strategy, seeds in strategies:
-        for seed in seeds:
-            future = executor.submit(evaluate, scenario_path, strategy.clone(), known_configurations, incumbent, selected_instances, seed)
+    for strategy, seeds_done in strategies:
+        for seed in range(nb_seeds):
+            if seed in seeds_done:
+                continue
+            future = executor.submit(evaluate, scenario_path, strategy.clone(), seed)
             future.add_done_callback(callback)
             futures.append(future)
     wait(futures, return_when=ALL_COMPLETED)
+    pbar.close()
 
 
 run(scenario_path, max_workers)
 # Last save
-df_tmp = pd.DataFrame(df)
-if original_df is not None:
-    df_tmp = original_df.append(df_tmp)
+df_tmp = pd.DataFrame(df_detailed)
+if original_df_detailed is not None:
+    df_tmp = original_df_detailed.append(df_tmp)
+df_tmp.to_csv(f"./detailed_runs_{output_suffix}.csv")
+df_tmp = pd.DataFrame(df_general)
+if original_df_general is not None:
+    df_tmp = original_df_general.append(df_tmp)
 df_tmp.to_csv(f"./runs_{output_suffix}.csv")
