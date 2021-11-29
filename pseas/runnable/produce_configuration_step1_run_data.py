@@ -339,7 +339,7 @@ def run(scenario_path, max_workers):
             for strategy_make in strategy_makers:
                 strat = strategy_make(selection(), discriminator())
                 seeds_done = []
-                total += n_algos
+                total += nb_seeds
                 if original_df_general is not None:
                     tmp = original_df_general[original_df_general["strategy"] == strat.name(
                     )]
