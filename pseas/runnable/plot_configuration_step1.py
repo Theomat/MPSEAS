@@ -28,7 +28,15 @@ argument_parser: argparse.ArgumentParser = argparse.ArgumentParser(
 
 argument_default_values = {
 	"suffix": 'kissat_ibm',
+    "folder": "."
 }
+
+argument_parser.add_argument('-f', '--folder',
+                             type=str,
+                             action='store',
+                             default=argument_default_values['folder'],
+                             help="Ffolder in which to look for the file (default: '.')"
+                             )
 argument_parser.add_argument('-s', '--suffix',
                              type=str,
                              action='store',
@@ -42,6 +50,7 @@ argument_parser.add_argument('-l', '--legend',
                              )
 parsed_parameters = argument_parser.parse_args()
 
+folder: str = parsed_parameters.folder 
 suffix: str = parsed_parameters.suffix
 legend: bool = parsed_parameters.legend
 # =============================================================================
@@ -434,7 +443,7 @@ def plot_correct_wrt_time(df: pd.DataFrame):
     plt.show()
 
 
-general_df = pd.read_csv(f"./runs_{suffix}.csv")
+general_df = pd.read_csv(f"{folder}/runs_{suffix}.csv")
 general_df = general_df.drop("Unnamed: 0", axis=1)
 general_df = __rename_strategies__(general_df)
 if general_perf:
@@ -442,7 +451,7 @@ if general_perf:
 if bias:
     print_table_bias(general_df)
 del general_df  # Free memory
-detailed_df = pd.read_csv(f"./detailed_runs_{suffix}.csv")
+detailed_df = pd.read_csv(f"{folder}/detailed_runs_{suffix}.csv")
 detailed_df = detailed_df.drop("Unnamed: 0", axis=1)
 detailed_df = __rename_strategies__(detailed_df)
 if correct_wrt_confidence:
