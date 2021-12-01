@@ -93,7 +93,7 @@ matplotlib.rcParams['font.family'] = 'STIXGeneral'
 
 def __rename_strategies__(df: pd.DataFrame) -> pd.DataFrame:
     df["strategy"] = df["strategy"].str.replace(
-        ".*-Discr\\./Time", "discrimination-based", regex=True)
+        ".*-discrimination-based", "discrimination-based", regex=True)
     df["strategy"] = df["strategy"].str.replace(
         "Info. over Decision/Time", "information-based", regex=False)
     df["strategy"] = df["strategy"].str.replace(
@@ -246,7 +246,7 @@ def plot_general_performance(df):
         # Get rid of the legend on the first plot, so it is only drawn on the separate figure
         g.legend.remove()
         labels[1] = r"$\bf{selection}$"
-        labels[-4] = r"$\bf{discrimination}$"
+        labels[-3] = r"$\bf{discrimination}$"
         # # Add empty path with color white for better rendering
         # path = matplotlib.patches.PathPatch(
         #     matplotlib.path.Path(vertices=[(0, 0)]), facecolor="white")
@@ -426,7 +426,7 @@ def plot_correct_wrt_time(df: pd.DataFrame):
         # Get rid of the legend on the first plot, so it is only drawn on the separate figure
         g.get_legend().remove()
         labels[0] = r"$\bf{selection}$"
-        labels[-3] = r"$\bf{discrimination}$"
+        labels[-2] = r"$\bf{discrimination}$"
         # # Add empty path with color white for better rendering
         # path = matplotlib.patches.PathPatch(
         #     matplotlib.path.Path(vertices=[(0, 0)]), facecolor="white")
