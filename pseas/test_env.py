@@ -77,7 +77,7 @@ class TestEnv:
 
         Parameters:
         -----------
-        - choice (ResetChoice or (challenger_index, incumbent_index)) - the choice type of algorithm to be evaluating
+        - choice (ResetChoice or (incumbent_index, challenger_index)) - the choice type of algorithm to be evaluating
 
         Return:
         -----------
