@@ -20,6 +20,8 @@ from pseas.new_instance_selection.new_instance_selection import NewInstanceSelec
 from pseas.new_instance_selection.random import Random
 from pseas.new_instance_selection.oracle import Oracle
 from pseas.new_instance_selection.variance_based import Variance
+from pseas.new_instance_selection.discrimination_based import Discrimination
+from pseas.new_instance_selection.udd import UDD
 
 # =============================================================================
 # Argument parsing.
@@ -98,9 +100,12 @@ TARGET_CONFIDENCE = .95
 # Start Strategy Definition
 # =============================================================================
 selectors: List[Callable[[], NewInstanceSelection]] = [
-    lambda:Random(0),
-    lambda:Oracle(),
-    # lambda:Variance()
+    lambda: Random(0),
+    lambda: Oracle(),
+    lambda: Variance(),
+    lambda: Discrimination(1.2),
+    lambda: UDD(0, 0),
+    lambda: UDD(1, 1)
 ]
 # =============================================================================
 # End Strategy Definition
