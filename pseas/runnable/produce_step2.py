@@ -32,7 +32,7 @@ argument_parser: argparse.ArgumentParser = argparse.ArgumentParser(
 
 argument_default_values: Dict = {
     "output_suffix": '',
-    "save_every": 5,
+    "save_every": 1,
     "max_workers": None,
     "scenario_path": './rundata/kissat_ibm',
     "nb_configurations": 10,
@@ -49,7 +49,7 @@ argument_parser.add_argument('--save-every',
                              type=int,
                              action='store',
                              default=argument_default_values['save_every'],
-                             help="Save data every X time. (default: 5)"
+                             help="Save data every X time. (default: 1)"
                              )
 argument_parser.add_argument('--max-workers',
                              type=int,
