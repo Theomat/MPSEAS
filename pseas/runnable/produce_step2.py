@@ -35,8 +35,8 @@ argument_default_values: Dict = {
     "save_every": 1,
     "max_workers": None,
     "scenario_path": './rundata/kissat_ibm',
-    "nb_configurations": 10,
-    "ratio_instances": .1,
+    "nb_configurations": 50,
+    "ratio_instances": .5,
     "nb_seeds": 5
 }
 argument_parser.add_argument('-o', '--output-suffix',
@@ -67,7 +67,7 @@ argument_parser.add_argument('--nb-configurations',
                              type=int,
                              action='store',
                              default=argument_default_values['nb_configurations'],
-                             help=" (default: 10)"
+                             help=" (default: 50)"
                              )
 argument_parser.add_argument('--nb-seeds',
                              type=int,
@@ -79,7 +79,7 @@ argument_parser.add_argument('--ratio-instances',
                              type=float,
                              action='store',
                              default=argument_default_values['ratio_instances'],
-                             help=" (default: 1)"
+                             help=" (default: .5)"
                              )
 
 parsed_parameters = argument_parser.parse_args()
@@ -101,11 +101,11 @@ TARGET_CONFIDENCE = .95
 # =============================================================================
 selectors: List[Callable[[], NewInstanceSelection]] = [
     lambda: Random(0),
-    lambda: Oracle(),
+    # lambda: Oracle(),
     lambda: Variance(),
-    lambda: Discrimination(1.2),
-    lambda: UDD(0, 0),
-    lambda: UDD(1, 1)
+    # lambda: Discrimination(1.2),
+    # lambda: UDD(0, 0),
+    # lambda: UDD(1, 1)
 ]
 # =============================================================================
 # End Strategy Definition
@@ -155,10 +155,12 @@ def evaluate(scenario_path: str, selector: NewInstanceSelection, seed: int,
     # Select instances
     ninstances = round(ratio_instances * env.ninstances)
     selected_instances = env.rng.choice(list(range(env.ninstances)), size=ninstances)
+    not_selected_instances: List[int] = []
     for instance in range(env.ninstances):
         if instance not in selected_instances:
             env.set_enabled(-1, instance, False)
             env.set_instance_count_for_eval(instance, False)
+            not_selected_instances.append(instance)
 
     # Subset of configurations
     known_configurations = env.rng.choice(list(range(env.nconfigurations)), size=nb_configurations)
@@ -186,29 +188,35 @@ def evaluate(scenario_path: str, selector: NewInstanceSelection, seed: int,
         time_challenger = env._results[selected_instances, challenger].tolist()
 
         with warnings.catch_warnings():
-            warnings.simplefilter(action='ignore', category=UserWarning)
-            _, p_stop = wilcoxon(
-                time_incumbents, time_challenger, alternative="two-sided")
+            # warnings.simplefilter(action='ignore', category=UserWarning)
+            _, p_stop = wilcoxon(time_incumbents, time_challenger, alternative="two-sided")
             confidence = 1 - p_stop
             added_instances: List[int] = []
             additional_time = 0
             incumbent_cpy = time_incumbents[:]
+            info: Dict = {}
             while confidence < TARGET_CONFIDENCE:
-                _, info, _ = env.reset((incumbent, challenger))
-                # Enable added instances
-                for i in added_instances:
-                    for c in known_configurations:
-                        env.set_enabled(c, i, True)
+                if len(added_instances) == 0:
+                    for inst in selected_instances:
+                        env.set_enabled(challenger, inst, True)
+                    _, info, _ = env.reset((incumbent, challenger))
                 if added_instances:
+                    env.set_enabled(incumbent, added_instances[-1], True)
+                    env.set_enabled(challenger, added_instances[-1], True)
+                    env.set_enabled()
                     env.fit_model()
+                    # Update perf
+                    for inst in not_selected_instances:
+                        for conf in known_configurations:
+                            info["filled_perf"][inst, conf] = env._model.predict(conf, inst)[0]
+
                 selected_instance = selector.select(challenger, incumbent, info["perf_matrix"], info["perf_mask"], info["model"], info["filled_perf"], info["features"])
                 added_instances.append(selected_instance)
                 assert selected_instance not in selected_instances
                 additional_time += env._results[selected_instance, incumbent] + env._results[selected_instance, challenger]
                 incumbent_cpy.append(env._results[selected_instance, incumbent])
                 time_challenger.append(env._results[selected_instance, challenger])
-                _, p_stop = wilcoxon(
-                incumbent_cpy, time_challenger, alternative="two-sided")
+                _, p_stop = wilcoxon(incumbent_cpy, time_challenger, alternative="two-sided")
                 confidence = 1 - p_stop
 
             
@@ -216,6 +224,7 @@ def evaluate(scenario_path: str, selector: NewInstanceSelection, seed: int,
                 # re disable old instances
                 for i in added_instances:
                     env.set_enabled(-1, i, False)
+                env.set_enabled(-challenger, -1, False)
                 stats["seed"].append(seed)
                 stats["incumbent"].append(incumbent)
                 stats["challenger"].append(challenger)
@@ -255,7 +264,7 @@ def run(scenario_path, max_workers):
     wait(futures, return_when=ALL_COMPLETED)
     pbar.close()
 
-
+TestEnv(scenario_path, True)
 run(scenario_path, max_workers)
 # Last save
 df_tmp = pd.DataFrame(df_general)
