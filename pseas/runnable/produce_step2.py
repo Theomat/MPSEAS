@@ -195,7 +195,7 @@ def evaluate(scenario_path: str, selector: NewInstanceSelection, seed: int,
             additional_time = 0
             incumbent_cpy = time_incumbents[:]
             info: Dict = {}
-            while confidence < TARGET_CONFIDENCE:
+            while confidence < TARGET_CONFIDENCE and len(added_instances) < 10:
                 if len(added_instances) == 0:
                     for inst in selected_instances:
                         env.set_enabled(challenger, inst, True)
