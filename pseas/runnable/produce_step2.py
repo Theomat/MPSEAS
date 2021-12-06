@@ -203,7 +203,6 @@ def evaluate(scenario_path: str, selector: NewInstanceSelection, seed: int,
                 if added_instances:
                     env.set_enabled(incumbent, added_instances[-1], True)
                     env.set_enabled(challenger, added_instances[-1], True)
-                    env.set_enabled()
                     env.fit_model()
                     # Update perf
                     for inst in not_selected_instances:
