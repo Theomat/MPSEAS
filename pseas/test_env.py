@@ -156,6 +156,8 @@ class TestEnv:
             self._enabled[:, configuration] = enabled
         elif configuration == -1:
             self._enabled[instance, :] = enabled
+        else:
+            self._enabled[instance, configuration] = enabled
 
     def set_instance_count_for_eval(self, instance: int, enabled: bool = True):
         """
