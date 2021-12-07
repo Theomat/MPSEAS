@@ -134,48 +134,19 @@ def __pareto_front__(X: np.ndarray, Y: np.ndarray) -> Tuple[np.ndarray, np.ndarr
     return front_x, front_y
 
 
-def __load_data__(file: str):
-    import csv
-
-    map = {}
-    first_row = None
-    with open(file) as fd:
-        for i, row in enumerate(csv.reader(fd)):
-            if i == 0:
-                first_row = row[1:]
-                continue
-            key = tuple(row[1:4])
-            value = row[4:-1]
-            selection = row[-1]
-            if not key in map:
-                map[key] = {}
-            map[key][selection] = value 
-
-    rows = []
-    for config, dico in map.items():
-        if "random" not in dico or "oracle" not in dico:
-            continue
-        random_time = float(dico["random"][-1])
-        oracle_time = float(dico["oracle"][-1])
-        for selection, val in dico.items():
-            time = (float(val[-1]) - oracle_time) / (random_time - oracle_time)
-            row = [int(x) for x in config] + [int(val[0]), time, selection]
-            rows.append(row)
-    return pd.DataFrame(rows, columns=first_row)
 
 
 def plot_saved_time(df: pd.DataFrame):
 
-    sns.scatterplot(x="selected_instances", y="additional_time", hue="selection", data=df)
+    sns.boxplot(x="selection", y="additional_time", data=df)
 
-    plt.xlim(1, 10)
-    plt.ylim(-0.5, 3)
-    plt.xlabel("# of instances added")
-    plt.ylabel("time used (0=oracle, 1=random)")
+    plt.ylabel("time used (log s)")
+    plt.semilogy()
 
     plt.show()
 
-general_df = __load_data__(f"{folder}/selections_{suffix}.csv")
-general_df = general_df.groupby(["selection", "seed", "selected_instances"]).mean().reset_index().groupby(["selection", "selected_instances"]).mean().reset_index()
+general_df = pd.read_csv(f"{folder}/selections_{suffix}.csv")
+
+general_df = general_df.groupby(["selection", "seed"]).mean().reset_index()
 
 plot_saved_time(general_df)
