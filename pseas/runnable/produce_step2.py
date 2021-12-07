@@ -101,11 +101,11 @@ TARGET_CONFIDENCE = .95
 # =============================================================================
 selectors: List[Callable[[], NewInstanceSelection]] = [
     lambda: Random(0),
-    # lambda: Oracle(),
+    lambda: Oracle(),
     lambda: Variance(),
-    # lambda: Discrimination(1.2),
-    # lambda: UDD(0, 0),
-    # lambda: UDD(1, 1)
+    lambda: Discrimination(1.2),
+    lambda: UDD(0, 0),
+    lambda: UDD(1, 1)
 ]
 # =============================================================================
 # End Strategy Definition
