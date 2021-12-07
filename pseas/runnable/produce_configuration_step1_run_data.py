@@ -38,7 +38,7 @@ argument_default_values: Dict = {
     "scenario_path": './rundata/kissat_ibm',
     "nb_configurations": 10,
     "ratio_instances": 1,
-    "nb_seeds": 5
+    "nb_seeds": 10
 }
 argument_parser.add_argument('-o', '--output-suffix',
                              type=str,
@@ -74,7 +74,7 @@ argument_parser.add_argument('--nb-seeds',
                              type=int,
                              action='store',
                              default=argument_default_values['nb_seeds'],
-                             help=" (default: 5)"
+                             help=" (default: 10)"
                              )
 argument_parser.add_argument('--ratio-instances',
                              type=float,
