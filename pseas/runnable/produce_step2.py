@@ -101,7 +101,6 @@ TARGET_CONFIDENCE = .95
 # =============================================================================
 selectors: List[Callable[[], NewInstanceSelection]] = [
     lambda: Random(0),
-    lambda: Oracle(),
     lambda: Variance(),
     lambda: Discrimination(1.2),
     lambda: UDD(0, 0),
