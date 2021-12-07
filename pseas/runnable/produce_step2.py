@@ -212,6 +212,7 @@ def evaluate(scenario_path: str, selector: NewInstanceSelection, seed: int,
                 selected_instance = selector.select(challenger, incumbent, info["perf_matrix"], info["perf_mask"], info["model"], info["filled_perf"], info["features"])
                 added_instances.append(selected_instance)
                 assert selected_instance not in selected_instances
+                assert selected_instance not in added_instances
                 additional_time += env._results[selected_instance, incumbent] + env._results[selected_instance, challenger]
                 incumbent_cpy.append(env._results[selected_instance, incumbent])
                 time_challenger.append(env._results[selected_instance, challenger])
