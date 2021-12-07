@@ -199,6 +199,7 @@ def evaluate(scenario_path: str, selector: NewInstanceSelection, seed: int,
                 if len(added_instances) == 0:
                     for inst in selected_instances:
                         env.set_enabled(challenger, inst, True)
+                    env.fit_model()
                     _, info, _ = env.reset((incumbent, challenger))
                 if added_instances:
                     env.set_enabled(incumbent, added_instances[-1], True)
