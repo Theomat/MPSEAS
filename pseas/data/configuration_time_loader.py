@@ -54,41 +54,14 @@ def load_configuration_data(path: str) -> Tuple[np.ndarray, Dict[int,np.ndarray]
         # Skip first line
         next(reader)
         for row in reader:
-            instance_features[instance_name2int[row[0]]] = np.array([np.double(val) for val in row[1:]],dtype=np.double)
+            if row[0] in instance_name2int.keys():
+                instance_features[instance_name2int[row[0]]] = np.array([np.double(val) for val in row[1:]],dtype=np.double)
 
     # convert configuration strings into lists of double
     with open(os.path.join(path, "params.pcs")) as pcs_file:
         pcs_list = pcs_file.readlines()
         #breakpoint()
         parameter_space = read_pcs(pcs_list)
-    #print(parameter_space.get_default_configuration().get_array())
-    #TODO: this is a bit hacky, will work only for kissat for now
-    #configurations: Dict[int, np.ndarray]={}
-    #parameters=set()
-    #for conf in configuration2int.keys():
-    #    for param in conf.lstrip('-').split(' -'):
-    #        parameters.add(param.split(" '")[0])
-    #parameter_list=np.array(sorted(list(parameters)))
-
-    #default=np.full(len(parameter_list),None)
-    #with open(os.path.join(path, "default.txt")) as fd:
-    #    row=fd.readline()
-    #    for param in row.lstrip('-').split(' -'):
-    #        
-    #        param_name, param_value = param.strip("'").split(" '")
-    #        default[np.where(parameter_list == param_name)]=param_value
-
-    # for conf in configuration2int.keys():
-    #     configurations[configuration2int[conf]]=default
-    #     for param in conf.lstrip('-').split(' -'):
-    #         param_name, param_value = param.strip("'").split(" '")
-    #         param_value= 0 if param_value=='false' else 1 if param_value=='true' else param_value
-    #         try:
-    #             param_value=float(param_value)
-    #         except:
-    #             pass
-    #         configurations[configuration2int[conf]][np.where(parameter_list == param_name)] = param_value
-    #     configurations[configuration2int[conf]]=configurations[configuration2int[conf]].astype(np.double)
     configurations: Dict[int, np.ndarray]={}
     for conf in configuration2int.keys():
         config_dict: Dict[str,str] = {}
