@@ -18,7 +18,7 @@ from tqdm import tqdm
 from pseas.test_env import ResetChoice, TestEnv
 from pseas.new_instance_selection.new_instance_selection import NewInstanceSelection
 from pseas.new_instance_selection.random import Random
-from pseas.new_instance_selection.oracle import Oracle
+#from pseas.new_instance_selection.oracle import Oracle
 from pseas.new_instance_selection.variance_based import Variance
 from pseas.new_instance_selection.discrimination_based import Discrimination
 from pseas.new_instance_selection.udd import UDD
