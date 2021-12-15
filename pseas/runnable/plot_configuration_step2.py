@@ -47,11 +47,17 @@ argument_parser.add_argument('-l', '--legend',
                              dest='legend',
                              help=" (default: False)"
                              )
+argument_parser.add_argument('-n', '--no-show',
+                             action='store_true',
+                             dest='no_show',
+                             help=" (default: False)"
+                             )
 parsed_parameters = argument_parser.parse_args()
 
 folder: str = parsed_parameters.folder 
 suffix: str = parsed_parameters.suffix
 legend: bool = parsed_parameters.legend
+no_show: bool = parsed_parameters.no_show
 # =============================================================================
 # Finished parsing
 # =============================================================================
@@ -61,21 +67,6 @@ legend: bool = parsed_parameters.legend
 marker_size = 110
 axis_font_size = 15
 legend_font_size = 15
-# Data --------------------------------------------
-# Paper Figures
-general_perf: bool = True
-general_perf_min_accuracy: float = 75
-
-# Other Tables
-bias: bool = True
-
-# Detailed data ------------------------------------
-# Paper Figures
-accuracy_wrt_time: bool = True
-correct_wrt_confidence: bool = True
-instances_wrt_time: bool = True
-# Other Figures
-confidence_wrt_time: bool = True
 sns.set_style("whitegrid")
 matplotlib.rcParams.update({'font.size': 14})
 matplotlib.rcParams['mathtext.fontset'] = 'custom'
@@ -142,8 +133,11 @@ def plot_saved_time(df: pd.DataFrame):
 
     plt.ylabel("time used (log s)")
     plt.semilogy()
-
-    plt.show()
+    if not no_show:
+        plt.show()
+    else:
+        plt.tight_layout()
+        plt.savefig(suffix + "_selections.pdf")
 
 general_df = pd.read_csv(f"{folder}/selections_{suffix}.csv")
 

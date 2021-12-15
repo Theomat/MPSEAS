@@ -48,11 +48,17 @@ argument_parser.add_argument('-l', '--legend',
                              dest='legend',
                              help=" (default: False)"
                              )
+argument_parser.add_argument('-n', '--no-show',
+                             action='store_true',
+                             dest='no_show',
+                             help=" (default: False)"
+                             )
 parsed_parameters = argument_parser.parse_args()
 
 folder: str = parsed_parameters.folder 
 suffix: str = parsed_parameters.suffix
 legend: bool = parsed_parameters.legend
+no_show: bool = parsed_parameters.no_show
 # =============================================================================
 # Finished parsing
 # =============================================================================
@@ -67,16 +73,13 @@ legend_font_size = 15
 general_perf: bool = True
 general_perf_min_accuracy: float = 75
 
-# Other Tables
-bias: bool = True
-
 # Detailed data ------------------------------------
 # Paper Figures
 accuracy_wrt_time: bool = True
-correct_wrt_confidence: bool = True
-instances_wrt_time: bool = True
+correct_wrt_confidence: bool = False
+instances_wrt_time: bool = False
 # Other Figures
-confidence_wrt_time: bool = True
+confidence_wrt_time: bool = False
 sns.set_style("whitegrid")
 matplotlib.rcParams.update({'font.size': 14})
 matplotlib.rcParams['mathtext.fontset'] = 'custom'
@@ -258,34 +261,10 @@ def plot_general_performance(df):
         print("Produced legend.pdf")
         plt.close(figlegend)
     plt.tight_layout()
-    plt.show()
-
-
-
-
-def print_table_bias(df: pd.DataFrame):
-    # If data is missing for a dataset skip it
-    if df.shape[0] == 0:
-        return
-
-    df["correct"] = df["y_pred"] == df["y_true"]
-    # Compute direction of performance
-    df["a_inc_is_better"] = df["perf_eval"] > df["perf_cmp"]
-    df = df[["discrimination", "a_inc_is_better", "correct", "selection", "time"]]
-
-    df["time"] *= 100
-    df["correct"] *= 100
-    df_aold = df[df["a_inc_is_better"] == True]
-    df_anew = df[df["a_inc_is_better"] == False]
-    out = df_aold.groupby(["selection", "discrimination"]).agg(
-        {"time": "median", "correct": "mean"}).reset_index()
-    out = out.rename(
-        columns={"time": "time a_inc better", "correct": "correct a_inc better"})
-    out = out.merge(df_anew.groupby(["selection", "discrimination"]).agg(
-        {"time": "median", "correct": "mean"}).reset_index())
-    out = out.rename(
-        columns={"time": "time a_ch better", "correct": "correct a_ch better"})
-    print(out)
+    if no_show:
+        plt.savefig(suffix + "_correct_wrt_time.pdf")
+    else:
+        plt.show()
 
 
 def plot_correct_wrt_confidence(df: pd.DataFrame):
@@ -322,7 +301,10 @@ def plot_correct_wrt_confidence(df: pd.DataFrame):
         print("Produced legend.pdf")
         plt.close(figlegend)
     plt.tight_layout()
-    plt.show()
+    if no_show:
+        plt.savefig(suffix + "_correct_wrt_confidence.pdf")
+    else:
+        plt.show()
 
 
 def plot_instances_wrt_time(df: pd.DataFrame):
@@ -357,7 +339,10 @@ def plot_instances_wrt_time(df: pd.DataFrame):
         print("Produced legend.pdf")
         plt.close(figlegend)
     plt.tight_layout()
-    plt.show()
+    if no_show:
+        plt.savefig(suffix + "_instances_wrt_time.pdf")
+    else:
+        plt.show()
 
 
 def plot_confidence_wrt_time(df: pd.DataFrame):
@@ -390,7 +375,10 @@ def plot_confidence_wrt_time(df: pd.DataFrame):
         print("Produced legend.pdf")
         plt.close(figlegend)
     plt.tight_layout()
-    plt.show()
+    if no_show:
+        plt.savefig(suffix + "_confidence_wrt_time.pdf")
+    else:
+        plt.show()
 
 
 def plot_correct_wrt_time(df: pd.DataFrame):
@@ -438,9 +426,10 @@ def plot_correct_wrt_time(df: pd.DataFrame):
         print("Produced legend.pdf")
         plt.close(figlegend)
     plt.tight_layout()
-    plt.savefig("correct_wrt_time.pdf", bbox_inches='tight')
-    print("Paper ready figure was saved as correct_wrt_time.pdf.")
-    plt.show()
+    if no_show:
+        plt.savefig(suffix + "_correct_wrt_time_no_stop.pdf", bbox_inches='tight')
+    else:
+        plt.show()
 
 
 general_df = pd.read_csv(f"{folder}/runs_{suffix}.csv")
@@ -448,8 +437,6 @@ general_df = general_df.drop("Unnamed: 0", axis=1)
 general_df = __rename_strategies__(general_df)
 if general_perf:
     plot_general_performance(general_df)
-if bias:
-    print_table_bias(general_df)
 del general_df  # Free memory
 detailed_df = pd.read_csv(f"{folder}/detailed_runs_{suffix}.csv")
 detailed_df = detailed_df.drop("Unnamed: 0", axis=1)
