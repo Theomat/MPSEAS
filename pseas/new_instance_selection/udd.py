@@ -127,8 +127,6 @@ class UDD(NewInstanceSelection):
         distances = __compute_distance_matrix__(instance_features, lambda x1, x2: np.linalg.norm(weights * (x1 - x2)))
 
         selectables_instances = [i for i in range(perf_matrix.shape[0]) if not np.any(perf_mask[i, :])]
-        current_configurations = np.any(perf_mask, axis=0)
-
         
         uncertainties = self.__uncertainty(perf_matrix, selectables_instances, model, challenger_configuration)
         # Normalize values in [0, 1]
