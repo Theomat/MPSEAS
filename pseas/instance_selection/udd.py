@@ -172,7 +172,7 @@ class UDD(InstanceSelection):
         return self._next
 
     def name(self) -> str:
-        return "Uncertainty" if self.alpha == 0 and self.beta == 0 else "UDD"
+        return "Uncertainty" if self.alpha == 0 and self.beta == 0 else f"UDD-{self.alpha}-{self.beta}"
 
     def clone(self) -> 'UDD':
         return UDD(self.alpha, self.beta, self.k)
