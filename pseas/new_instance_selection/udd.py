@@ -151,4 +151,4 @@ class UDD(NewInstanceSelection):
 
 
     def name(self) -> str:
-        return "uncertainty" if self.alpha == 0 and self.beta == 0 else "udd"
+        return "uncertainty" if self.alpha == 0 and self.beta == 0 else f"udd-{self.alpha}-{self.beta}"
