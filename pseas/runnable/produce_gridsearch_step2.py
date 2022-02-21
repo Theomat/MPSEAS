@@ -102,11 +102,11 @@ TARGET_CONFIDENCE = .95
 # =============================================================================
 selectors: List[Callable[[], NewInstanceSelection]] = []
 if not disc_instead_udd:
-    parameters_1 = np.linspace(.2, 2).tolist()
-    parameters_2 = np.linspace(.2, 2).tolist()
+    parameters_1 = np.linspace(.2, 2, num=10).tolist()
+    parameters_2 = np.linspace(.2, 2, 10).tolist()
     selectors = [lambda:UDD(p1, p2) for p1 in parameters_1 for p2 in parameters_2]
 else:
-    parameters = np.linspace(1.01, 2).tolist()
+    parameters = np.linspace(1.01, 2, num=10).tolist()
     selectors = [lambda:Discrimination(p) for p in parameters]
 # =============================================================================
 # End Strategy Definition
