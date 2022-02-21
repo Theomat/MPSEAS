@@ -29,4 +29,4 @@ class Discrimination(NewInstanceSelection):
 
 
     def name(self) -> str:
-        return "discrimination"
+        return f"discrimination-{self.rho}"
