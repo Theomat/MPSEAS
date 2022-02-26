@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+
+COLORS_QTY: int = 5
 # =============================================================================
 # Argument parsing.
 # =============================================================================
@@ -18,7 +20,7 @@ argument_parser.add_argument('-f', '--folder',
                              type=str,
                              action='store',
                              default=argument_default_values['folder'],
-                             help="Ffolder in which to look for the file (default: '.')"
+                             help="Folder in which to look for the file (default: '.')"
                              )
 argument_parser.add_argument('-s', '--suffix',
                              type=str,
@@ -81,6 +83,8 @@ for i, configurations in enumerate(range(10, 60, 10)):
             auc = integrate.trapezoid(data[:, 0], dx=1, axis=0)
             dico[method][i, j] = auc / 10000 * 100
 
+COLOR_NAMES = [f"color{i+1}" for i in range(COLORS_QTY)]
+
 for method, values in dico.items():
     print("\\begin{table}")
     print("\t\\centering")
@@ -88,8 +92,15 @@ for method, values in dico.items():
     print("\t\\begin{tabular}{"+ ("c" * 6) + "}")
     print("\t\t\\toprule")
     print("\t\tConfigurations & 10 & 20 & 30 & 40 & 50 \\\\")
+    mini = np.min(values) 
+    maxi = np.max(values)
+    scale = maxi - mini
+    unit = scale / (len(COLOR_NAMES) - 1)
     for j, percent in enumerate(range(10, 60, 10)):
-        print(f"\t\t{percent}\\% & " + " & ".join("{:.1f}".format(float(values[i, j])) for i, _ in enumerate(range(10, 60, 10))) + "\\\\")
+        line_values = [float(values[i, j])
+                       for i, _ in enumerate(range(10, 60, 10))]
+        colors = [COLOR_NAMES[round((x - mini) / unit)] for x in line_values]
+        print(f"\t\t{percent}\\% & " + " & ".join(f"\\colorbox{{{color}!30}}{{{val:.1f}}}" for color, val in zip(colors, line_values)) + "\\\\")
     print("\t\t\\bottomrule")
     print("\t\\end{tabular}")
     print("\\end{table}")
