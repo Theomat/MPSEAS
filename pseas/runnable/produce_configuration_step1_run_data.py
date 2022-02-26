@@ -114,7 +114,6 @@ selectors = [
     lambda: UDD(alpha=0, beta=0), # Uncertainty sampling
     lambda: UDD(alpha=1, beta=1), # Find optimal alpha, beta?
     lambda: VarianceBased(),
-    # lambda: InformationBased(), #TODO: try adaptation
 ]
 
 strategy_makers = [
@@ -287,7 +286,7 @@ def evaluate(scenario_path: str, strategy: Strategy, seed: int,
                             stats["confidence"].append(100)
                 last_time_ratio = time_ratio
 
-            if not finished and strategy.get_current_choice_confidence() >= .95:
+            if not finished and strategy.get_current_choice_confidence() >= .95 and not strategy.is_better():
                 if isinstance(strategy._discrimination, Wilcoxon) and env.current_instances < 5:
                     continue
                 finished = True
