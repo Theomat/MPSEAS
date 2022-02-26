@@ -115,10 +115,10 @@ selectors: List[Callable[[], InstanceSelection]] = []
 if not disc_instead_udd:
     parameters_1 = np.linspace(.2, 2, num=10).tolist()
     parameters_2 = np.linspace(.2, 2, num=10).tolist()
-    selectors = [lambda:UDD(p1, p2) for p1 in parameters_1 for p2 in parameters_2]
+    selectors = [UDD(p1, p2) for p1 in parameters_1 for p2 in parameters_2]
 else:
     parameters = np.linspace(1.01, 2, num=10).tolist()
-    selectors = [lambda:DiscriminationBased(p) for p in parameters]
+    selectors = [DiscriminationBased(p) for p in parameters]
 strategy_makers = [
     lambda i, d: StandardStrategy(i, d),
 ]
@@ -339,7 +339,7 @@ def run(scenario_path, max_workers):
     for discriminator in discriminators:
         for selection in selectors:
             for strategy_make in strategy_makers:
-                strat = strategy_make(selection(), discriminator())
+                strat = strategy_make(selection, discriminator())
                 seeds_done = []
                 total += nb_seeds
                 if original_df_general is not None:

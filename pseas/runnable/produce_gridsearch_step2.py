@@ -104,10 +104,10 @@ selectors: List[Callable[[], NewInstanceSelection]] = []
 if not disc_instead_udd:
     parameters_1 = np.linspace(.2, 2, num=10).tolist()
     parameters_2 = np.linspace(.2, 2, 10).tolist()
-    selectors = [lambda:UDD(p1, p2) for p1 in parameters_1 for p2 in parameters_2]
+    selectors = [UDD(p1, p2) for p1 in parameters_1 for p2 in parameters_2]
 else:
     parameters = np.linspace(1.01, 2, num=10).tolist()
-    selectors = [lambda:Discrimination(p) for p in parameters]
+    selectors = [Discrimination(p) for p in parameters]
 # =============================================================================
 # End Strategy Definition
 # =============================================================================
@@ -241,7 +241,7 @@ def run(scenario_path, max_workers):
     total: int = 0
     strategies: List[Tuple[NewInstanceSelection, Dict]] = []
     for selection in selectors:
-        selector = selection()
+        selector = selection
         seeds_done = []
         total += nb_seeds
         if original_df_general is not None:
@@ -250,7 +250,7 @@ def run(scenario_path, max_workers):
             seeds_done = np.unique(
                 tmp["seed"].values).tolist()
             total -= len(seeds_done)
-        strategies.append([selection, seeds_done])
+        strategies.append([selector, seeds_done])
 
     global pbar 
     pbar = tqdm(total=total)
@@ -260,7 +260,7 @@ def run(scenario_path, max_workers):
         for seed in range(nb_seeds):
             if seed in seeds_done:
                 continue
-            future = executor.submit(evaluate, scenario_path, strategy(), seed)
+            future = executor.submit(evaluate, scenario_path, strategy, seed)
             future.add_done_callback(callback)
             futures.append(future)
     wait(futures, return_when=ALL_COMPLETED)
