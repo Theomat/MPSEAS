@@ -52,7 +52,7 @@ for i, configurations in enumerate(range(10, 60, 10)):
         # Change here to MEAN or MEDIAN
         df = df.groupby(["selection"]).median().reset_index()
         df["rank"] = df["additional_time"].rank()
-
+        print(df)
         for method in df["selection"].unique():
             if method not in dico:
                 dico[method] = np.zeros((5, 5))
@@ -64,7 +64,7 @@ for i, configurations in enumerate(range(10, 60, 10)):
 for method, values in dico.items():
     print("\\begin{table}")
     print("\t\\centering")
-    print("\t\\caption{Median Rank for " + method  + " on " + suffix.replace("_", " ") + "}")
+    print("\t\\caption{Rank of median for " + method  + " on " + suffix.replace("_", " ") + "}")
     print("\t\\begin{tabular}{"+ ("c" * 6) + "}")
     print("\t\t\\toprule")
     print("\t\tConfigurations & 10 & 20 & 30 & 40 & 50 \\\\")
@@ -75,3 +75,15 @@ for method, values in dico.items():
     print("\t\t\\bottomrule")
     print("\t\\end{tabular}")
     print("\\end{table}")
+
+print("\\begin{table}")
+print("\t\\centering")
+print("\t\\caption{Median Rank on " + suffix.replace("_", " ") + "}")
+print("\t\\begin{tabular}{lr}")
+print("\t\t\\toprule")
+print("\t\tselection & rank \\\\")
+for method, values in dico.items():
+    print("\t\t"+method+" & "+str(np.median(values))+"\\\\")
+print("\t\t\\bottomrule")
+print("\t\\end{tabular}")
+print("\\end{table}")
