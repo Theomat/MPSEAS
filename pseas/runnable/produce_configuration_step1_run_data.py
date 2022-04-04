@@ -174,7 +174,7 @@ def callback(future):
             df_detailed[k].append(el)
 
     # Save detailed dataframe
-    if pbar.n % save_every == 0:
+    if pbar.n % save_every == 0 or pbar.n == pbar.total:
         df_tmp = pd.DataFrame(df_detailed)
         if original_df_detailed is not None:
             df_tmp = original_df_detailed.append(df_tmp)
@@ -200,7 +200,7 @@ def callback(future):
         df_general["y_pred"].append(real["prediction"][index])
         df_general["seed"].append(seed)
     # Save general dataframe
-    if pbar.n % save_every == 0:
+    if pbar.n % save_every == 0 or pbar.n == pbar.total:
         df_tmp = pd.DataFrame(df_general)
         if original_df_general is not None:
             df_tmp = original_df_general.append(df_tmp)
@@ -326,10 +326,7 @@ def evaluate(scenario_path: str, strategy: Strategy, seed: int,
     return strategy.name(), list(env.runs()), kwargs
 
 def run(scenario_path, max_workers):
-    print()
-    env = TestEnv(scenario_path)
-    
-    n_algos = env.nconfigurations
+    print()    
     # Generate strategies
     total: int = 0
     strategies: List[Tuple[Strategy, Dict]] = []
@@ -363,12 +360,3 @@ def run(scenario_path, max_workers):
 
 
 run(scenario_path, max_workers)
-# Last save
-df_tmp = pd.DataFrame(df_detailed)
-if original_df_detailed is not None:
-    df_tmp = original_df_detailed.append(df_tmp)
-df_tmp.to_csv(f"./detailed_runs_{output_suffix}.csv")
-df_tmp = pd.DataFrame(df_general)
-if original_df_general is not None:
-    df_tmp = original_df_general.append(df_tmp)
-df_tmp.to_csv(f"./runs_{output_suffix}.csv")
