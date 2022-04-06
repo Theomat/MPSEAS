@@ -8,6 +8,7 @@ Note that:
 """
 import numpy as np
 import pandas as pd
+from scipy.stats import permutation_test
 # =============================================================================
 # Argument parsing.
 # =============================================================================
@@ -41,24 +42,54 @@ suffix: str = parsed_parameters.suffix
 # =============================================================================
 METHODS = ["random","discrimination","variance","uncertainty", "udd"]
 
+def statistic(x, y):
+
+    return np.median(x) - np.median(y)
+
+def compute_rank(df_full, df):
+    df.sort_values(by=['rank'])
+    similar=[]
+    for first, second in zip(list(df['selection'])[:-1],list(df['selection'])[1:]):
+        print(first)
+        print(second)
+        ptest = permutation_test((list(df_full[df_full['selection'] == first]['additional_time']),list(df_full[df_full['selection'] == second]['additional_time'])), statistic)
+        if ptest.pvalue>0.5:
+            if similar == []:
+                similar = [first,second]
+            else:
+                similar = similar + [second]
+                for i in range(2,len(similar)):
+                    ptest2 = permutation_test((list(df_full[df_full['selection'] == similar[-i]]['additional_time']),list(df_full[df_full['selection'] == second]['additional_time'])), statistic)
+                    if ptest2.pvalue>0.5:
+                        similar = similar[-i+1:]
+                        break;
+                    
+            new_val = (np.sum([df[df['selection'] == val]['rank'].item() for val in similar] ))/len(similar)
+            for val in similar:
+                df.loc[df['selection'] == val, 'rank'] = new_val
+        else:
+            similar=[]
+    return df['rank']
 
 dico = {}
 for i, configurations in enumerate(range(10, 60, 10)):
     for j, split in enumerate(range(10, 60, 10)):
         ratio = split / 100
-        df = pd.read_csv(f"{folder}/selections_{suffix}_{configurations}_{ratio}.csv")
-        df = df.drop("Unnamed: 0", axis=1)
-        df = df.groupby(["selection", "seed"]).mean().reset_index()
+        df_full = pd.read_csv(f"{folder}/selections_{suffix}_{configurations}_{ratio}.csv")
+        df_full = df_full.drop("Unnamed: 0", axis=1)
+        df = df_full.groupby(["selection", "seed"]).mean().reset_index()
         # Change here to MEAN or MEDIAN
         df = df.groupby(["selection"]).median().reset_index()
         df["rank"] = df["additional_time"].rank()
+        df["statistical_rank"] = compute_rank(df_full, df[["selection","rank"]].copy())
         print(df)
         for method in df["selection"].unique():
             if method not in dico:
                 dico[method] = np.zeros((5, 5))
 
             data = df[df["selection"] == method]
-            dico[method][i, j] = data["rank"].to_numpy()[0]
+            dico[method][i, j] = data["statistical_rank"].to_numpy()[0]
+            
 
 
 for method, values in dico.items():
