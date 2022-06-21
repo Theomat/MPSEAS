@@ -129,10 +129,12 @@ def __pareto_front__(X: np.ndarray, Y: np.ndarray) -> Tuple[np.ndarray, np.ndarr
 
 def plot_saved_time(df: pd.DataFrame):
 
-    sns.boxplot(x="selection", y="additional_time", data=df, order=["random","discrimination","variance","uncertainty", 'udd'])
-
-    plt.ylabel("time used (s)")
+    ax = sns.boxplot(x="selection", y="additional_time", data=df, width=0.8, order=["random","discrimination-1.12","variance","udd-1.4-0.2","uncertainty"], showfliers=False)
+    ax.set_xticklabels(["random","discrimination","variance","udd","uncertainty"])
+    ax.tick_params(labelsize="large", rotation=45)
+    plt.ylabel("time used (s)",size='large')
     plt.semilogy()
+    #plt.ylim([100,10000])
     if not no_show:
         plt.show()
     else:

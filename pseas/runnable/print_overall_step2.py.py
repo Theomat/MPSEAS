@@ -52,7 +52,14 @@ def compute_rank(df_full, df):
     for first, second in zip(list(df['selection'])[:-1],list(df['selection'])[1:]):
         print(first)
         print(second)
-        ptest = permutation_test((list(df_full[df_full['selection'] == first]['additional_time']),list(df_full[df_full['selection'] == second]['additional_time'])), statistic)
+        list_first=list(df_full[df_full['selection'] == first]['additional_time'])
+        list_second=list(df_full[df_full['selection'] == second]['additional_time'])
+        if len(list_first)== 1:
+            print("warning, there is only one run here")
+            list_first = list_first+list_first
+            list_second = list_second+list_second
+
+        ptest = permutation_test((list_first,list_second), statistic)
         if ptest.pvalue>0.5:
             if similar == []:
                 similar = [first,second]
@@ -81,8 +88,8 @@ for i, configurations in enumerate(range(10, 60, 10)):
         # Change here to MEAN or MEDIAN
         df = df.groupby(["selection"]).median().reset_index()
         df["rank"] = df["additional_time"].rank()
+        print(str(ratio+configurations))
         df["statistical_rank"] = compute_rank(df_full, df[["selection","rank"]].copy())
-        print(df)
         for method in df["selection"].unique():
             if method not in dico:
                 dico[method] = np.zeros((5, 5))

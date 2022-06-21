@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-COLORS_QTY: int = 5
+COLORS_QTY: int = 30#5
 # =============================================================================
 # Argument parsing.
 # =============================================================================
@@ -85,24 +85,28 @@ for i, configurations in enumerate(range(10, 60, 10)):
 
 COLOR_NAMES = [f"color{i+1}" for i in range(COLORS_QTY)]
 
+print("\\begin{table}")
+print("\t\\centering")
+print("\t\\caption{Percentage of total AUC Evolution on " + suffix.replace("_", " ") + "}")
+print("\t\\begin{tabular}{"+ ("c" * 6) + "}")
+print("\t\t\\toprule")
+print("\t\tConfigurations & 10 & 20 & 30 & 40 & 50 \\\\")
 for method, values in dico.items():
-    print("\\begin{table}")
-    print("\t\\centering")
-    print("\t\\caption{Percentage of total AUC Evolution for " + method  + " on " + suffix.replace("_", " ") + "}")
-    print("\t\\begin{tabular}{"+ ("c" * 6) + "}")
-    print("\t\t\\toprule")
-    print("\t\tConfigurations & 10 & 20 & 30 & 40 & 50 \\\\")
-    mini = np.min(values) 
-    maxi = np.max(values)
+    
+    mini = 70#np.min(values)
+    maxi = 100#np.max(values)
     scale = maxi - mini
     unit = scale / (len(COLOR_NAMES) - 1)
+    print("\multirow{5}{*}{\rotatebox[origin=c]{90}{"+method+"}}")
     for j, percent in enumerate(range(10, 60, 10)):
         line_values = [float(values[i, j])
                        for i, _ in enumerate(range(10, 60, 10))]
         colors = [COLOR_NAMES[round((x - mini) / unit)] for x in line_values]
-        print(f"\t\t{percent}\\% & " + " & ".join(f"\\colorbox{{{color}!30}}{{{val:.1f}}}" for color, val in zip(colors, line_values)) + "\\\\")
-    print("\t\t\\bottomrule")
-    print("\t\\end{tabular}")
-    print("\\end{table}")
+        print(f"& \t\t{percent}\\% & " + " & ".join(f"\\colorbox{{{color}!30}}{{}}" for color in colors) + "\\\\")
+        print("\t\t\\midrule")
+        
+print("\t\t\\bottomrule")
+print("\t\\end{tabular}")
+print("\\end{table}")
 
 
