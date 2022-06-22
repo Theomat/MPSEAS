@@ -18,7 +18,8 @@ argument_parser: argparse.ArgumentParser = argparse.ArgumentParser(
 
 argument_default_values = {
 	"suffix": 'kissat_ibm',
-    "folder": "."
+    "folder": ".",
+    "stats": "time"
 }
 
 argument_parser.add_argument('-f', '--folder',
@@ -33,10 +34,17 @@ argument_parser.add_argument('-s', '--suffix',
                              default=argument_default_values['suffix'],
                              help="File suffix used in produce_run_data (default: 'kissat_ibm')"
                              )
+argument_parser.add_argument( '--stats',
+                             type=str,
+                             action='store',
+                             default=argument_default_values['stats'],
+                             help="Stat to choose either: time, rank or instances (default: 'time')"
+                             )
 parsed_parameters = argument_parser.parse_args()
 
 folder: str = parsed_parameters.folder 
 suffix: str = parsed_parameters.suffix
+STAT: str = parsed_parameters.stats.upper()
 # =============================================================================
 # Finished parsing
 # =============================================================================
@@ -87,39 +95,58 @@ for i, configurations in enumerate(range(10, 60, 10)):
         df = df_full.groupby(["selection", "seed"]).mean().reset_index()
         # Change here to MEAN or MEDIAN
         df = df.groupby(["selection"]).median().reset_index()
-        df["rank"] = df["additional_time"].rank()
+        # df["time"] = df["additional_time"].median()
         print(str(ratio+configurations))
-        df["statistical_rank"] = compute_rank(df_full, df[["selection","rank"]].copy())
+        if STAT == "RANK":
+            df["rank"] = df["additional_time"].rank()
+            df["statistical_rank"] = compute_rank(df_full, df[["selection","rank"]].copy())
+        elif STAT == "TIME":
+            df["time"] = df["additional_time"]
+        else:
+            df["instances"] = df["selected_instances"].median()
         for method in df["selection"].unique():
             if method not in dico:
                 dico[method] = np.zeros((5, 5))
 
             data = df[df["selection"] == method]
-            dico[method][i, j] = data["statistical_rank"].to_numpy()[0]
+            if STAT == "RANK":
+                dico[method][i, j] = data["statistical_rank"].to_numpy()[0]
+            elif STAT == "TIME":
+                dico[method][i, j] = data["time"].median()
+            else:
+                dico[method][i, j] = data["instances"].median()
+
             
 
 
+name = STAT.lower()
 for method, values in dico.items():
     print("\\begin{table}")
     print("\t\\centering")
-    print("\t\\caption{Rank of median for " + method  + " on " + suffix.replace("_", " ") + "}")
+    print("\t\\caption{Median " + name.title() + " for " +
+          method + " on " + suffix.replace("_", " ") + "}")
     print("\t\\begin{tabular}{"+ ("c" * 6) + "}")
     print("\t\t\\toprule")
     print("\t\tConfigurations & 10 & 20 & 30 & 40 & 50 \\\\")
     for j, percent in enumerate(range(10, 60, 10)):
         line_values = [float(values[i, j])
                        for i, _ in enumerate(range(10, 60, 10))]
-        print(f"\t\t{percent}\\% & " + " & ".join(f"{val:.1f}" for val in line_values) + "\\\\")
+        if STAT == "TIME":
+            print(f"\t\t{percent}\\% & " +
+                  " & ".join(f"{val:.3f}" for val in line_values) + "\\\\")
+        else:
+            print(f"\t\t{percent}\\% & " + " & ".join(f"{val:.1f}" for val in line_values) + "\\\\")
     print("\t\t\\bottomrule")
     print("\t\\end{tabular}")
     print("\\end{table}")
 
+
 print("\\begin{table}")
 print("\t\\centering")
-print("\t\\caption{Median Rank on " + suffix.replace("_", " ") + "}")
+print("\t\\caption{Median " + name.title() + " on " + suffix.replace("_", " ") + "}")
 print("\t\\begin{tabular}{lr}")
 print("\t\t\\toprule")
-print("\t\tselection & rank \\\\")
+print(f"\t\tselection & {name} \\\\")
 for method, values in dico.items():
     print("\t\t"+method+" & "+str(np.median(values))+"\\\\")
 print("\t\t\\bottomrule")
