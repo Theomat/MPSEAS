@@ -1,0 +1,6 @@
+,seed,incumbent,challenger,selected_instances,additional_time,selection
+0,5,36,77,10,582.2905999999999,random
+1,5,36,77,10,53.9159,variance
+2,5,36,77,10,53.9159,discrimination-1.12
+3,5,36,77,10,92.1009,uncertainty
+4,5,36,77,10,475.0317,udd-1.4-0.2
