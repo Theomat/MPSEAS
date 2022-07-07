@@ -69,11 +69,12 @@ class UDD(InstanceSelection):
 
     """
 
-    def __init__(self, alpha: float = 1, beta: float = 1, k : int = 5) -> None:
+    def __init__(self, alpha: float = 1, beta: float = 1, k : int = 5, normalize: bool = False) -> None:
         super().__init__()
         self.alpha: float = alpha
         self.beta: float = beta
         self.k : int = k
+        self.normalize = normalize
 
     def _dynamic_distance(self, x1: np.ndarray, x2: np.ndarray) -> float:
         return np.linalg.norm(self._weights * (x1 - x2))
@@ -89,6 +90,10 @@ class UDD(InstanceSelection):
             if np.any(perf_mask[instance]):
                 times = filled_perf[instance, perf_mask[instance]]
                 y[instance] = np.median(times)
+            else:
+                y[instance] = 1e30
+
+        self._locs = y
         self._weights: np.ndarray = __find_weights__(features, y, mask)
         self._distances = __compute_distance_matrix__(features, self._dynamic_distance)
 
@@ -161,6 +166,9 @@ class UDD(InstanceSelection):
             densities /= max(1e-3, np.max(densities))
             diversities /= max(1e-3, np.max(diversities))
             scores = uncertainties + self.alpha * densities - self.beta * diversities
+
+        if self.normalize:
+            scores *= self.locs
         for i in range(self.n_instances):
             if state[0][i] is not None:
                 scores[i] = 1e30
@@ -172,7 +180,10 @@ class UDD(InstanceSelection):
         return self._next
 
     def name(self) -> str:
-        return "Uncertainty" if self.alpha == 0 and self.beta == 0 else f"UDD-{self.alpha}-{self.beta}"
+        name = "uncertainty" if self.alpha == 0 and self.beta == 0 else f"udd-{self.alpha}-{self.beta}"
+        if self.normalize:
+            name += " normed"
+        return name
 
     def clone(self) -> 'UDD':
         return UDD(self.alpha, self.beta, self.k)

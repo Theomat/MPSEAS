@@ -62,12 +62,21 @@ def __find_weights__(x: np.ndarray, y: np.ndarray, mask: np.ndarray) -> np.ndarr
     return np.sqrt(weights)
 
 class UDD(NewInstanceSelection):
+    """
+    Uncertainty + alpha * Density - beta *  Diversity
 
-    def __init__(self, alpha: float = 1, beta: float = 1, k : int = 5) -> None:
+    Uncertainty, Density, Diversity in [0;1] 
+
+    k: int - number of neighbours for density step
+
+    """
+
+    def __init__(self, alpha: float = 1, beta: float = 1, k: int = 5, normalize: bool = False) -> None:
         super().__init__()
         self.alpha: float = alpha
         self.beta: float = beta
-        self.k : int = k
+        self.k: int = k
+        self.normalize = normalize
 
     def __uncertainty(self, perf_matrix: np.ndarray, selectables_instances, model: Model, challenger_configuration) -> List[int]:
         """
@@ -123,6 +132,8 @@ class UDD(NewInstanceSelection):
             if np.any(perf_mask[instance]):
                 times = perf_matrix[instance, perf_mask[instance]]
                 y[instance] = np.median(times)
+            else:
+                y[instance] = 1e30
         weights: np.ndarray = __find_weights__(instance_features, y, mask)
         distances = __compute_distance_matrix__(instance_features, lambda x1, x2: np.linalg.norm(weights * (x1 - x2)))
 
@@ -143,6 +154,9 @@ class UDD(NewInstanceSelection):
             densities /= max(1e-3, np.max(densities))
             diversities /= max(1e-3, np.max(diversities))
             scores = uncertainties + self.alpha * densities - self.beta * diversities
+
+        if self.normalize:
+            scores *= y
         for i in range(perf_matrix.shape[0]):
             if i not in selectables_instances:
                 scores[i] = 1e30
@@ -151,4 +165,7 @@ class UDD(NewInstanceSelection):
 
 
     def name(self) -> str:
-        return "uncertainty" if self.alpha == 0 and self.beta == 0 else f"udd-{self.alpha}-{self.beta}"
+        name = "uncertainty" if self.alpha == 0 and self.beta == 0 else f"udd-{self.alpha}-{self.beta}"
+        if self.normalize:
+            name += " normed"
+        return name
