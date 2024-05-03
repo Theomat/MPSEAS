@@ -4,7 +4,7 @@ pyyaml==5.4.1
 liac-arff==2.4.0
 pandas==1.2.3
 matplotlib==3.3.4
-tqdm==4.60.0
+tqdm==4.66.3
 seaborn==0.11.1
 pyrfr==0.8.0
 ConfigSpace==0.4.20
